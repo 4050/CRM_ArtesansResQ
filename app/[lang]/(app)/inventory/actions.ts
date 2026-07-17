@@ -53,3 +53,12 @@ export async function archiveConsumableAction(lang: Locale, id: string): Promise
   revalidatePath(`/${lang}/inventory`)
   return {}
 }
+
+export async function transferToTeamStockAction(lang: Locale, id: string, quantity: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('transfer_to_team_stock', { p_consumable_id: id, p_quantity: quantity })
+  if (error) return { error: error.message }
+  revalidatePath(`/${lang}/inventory`)
+  revalidatePath(`/${lang}/team-stock`)
+  return {}
+}

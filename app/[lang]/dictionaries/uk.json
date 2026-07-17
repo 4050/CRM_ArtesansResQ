@@ -9,7 +9,8 @@
   "nav": {
     "dashboard": "Дашборд",
     "writeoffs": "Списання",
-    "inventory": "Склад",
+    "inventory": "Основний склад",
+    "teamStock": "Склад команди",
     "vehicles": "Машини та сумки",
     "movements": "Рух складу",
     "reports": "Звіти",
@@ -56,6 +57,8 @@
     "inStockShort": "залишок",
     "minShort": "мін",
     "goToInventory": "Перейти на склад →",
+    "goToTeamStock": "Перейти на склад команди →",
+    "mainLowStockBanner": "На основному складі закінчується {count} поз.",
     "recentCalls": "Останні виклики",
     "allCalls": "Усі виклики →",
     "dateTime": "Дата й час",
@@ -93,6 +96,10 @@
     "allItems": "Усі позиції",
     "operation": "Операція",
     "allOperations": "Усі операції",
+    "warehouse": "Склад",
+    "allWarehouses": "Усі склади",
+    "warehouseMain": "Основний",
+    "warehouseTeam": "Команда",
     "employee": "Співробітник",
     "allEmployees": "Усі співробітники",
     "fromDate": "З дати",
@@ -124,7 +131,7 @@
     "deletedItem": "Видалена позиція"
   },
   "inventory": {
-    "title": "Склад витратних матеріалів",
+    "title": "Основний склад",
     "newItem": "Нова позиція",
     "searchPlaceholder": "Пошук за назвою...",
     "allCategories": "Усі категорії",
@@ -159,7 +166,13 @@
     "descriptionOptional": "Опис (необов'язково)",
     "descriptionPlaceholder": "Додаткова інформація...",
     "save": "Зберегти",
-    "add": "Додати"
+    "add": "Додати",
+    "issueToTeam": "Видати команді",
+    "issueTitle": "Видати на склад команди",
+    "currentMainStock": "Зараз на основному складі",
+    "howMuchToIssue": "Скільки видати, {unit}",
+    "mainWillBecome": "На основному складі стане",
+    "issue": "Видати"
   },
   "vehicles": {
     "title": "Машини та сумки",
@@ -281,5 +294,18 @@
       "deleting": "Помилка при видаленні виклику",
       "migrationsNeeded": "База даних не оновлена: застосуйте міграції Supabase."
     }
+  },
+  "teamStock": {
+    "title": "Склад команди",
+    "subtitle": "Те, що зараз видано команді — списання під час викликів ідуть звідси",
+    "searchPlaceholder": "Пошук за назвою...",
+    "allCategories": "Усі категорії",
+    "code": "Код",
+    "name": "Назва",
+    "category": "Категорія",
+    "unit": "Од.",
+    "stock": "Залишок",
+    "minimum": "Мінімум",
+    "noneFound": "Команді ще нічого не видавали"
   }
 }

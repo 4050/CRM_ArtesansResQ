@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getCallForEdit } from '@/lib/data/calls'
 import { getActiveVehicles } from '@/lib/data/vehicles'
 import { getActiveBags } from '@/lib/data/bags'
-import { getConsumableOptions } from '@/lib/data/consumables'
+import { getTeamStockOptions } from '@/lib/data/team-stock'
 import { getProfile } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../../../../dictionaries'
 import EditCallForm from './EditCallForm'
@@ -23,7 +23,7 @@ export default async function EditCallPage({ params }: { params: Promise<{ lang:
     getCallForEdit(id),
     getActiveVehicles(),
     getActiveBags(),
-    getConsumableOptions({ includeInactive: true }),
+    getTeamStockOptions({ includeInactive: true }),
     getProfile(userId),
   ])
 

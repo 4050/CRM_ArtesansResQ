@@ -9,7 +9,8 @@
   "nav": {
     "dashboard": "Dashboard",
     "writeoffs": "Write-offs",
-    "inventory": "Inventory",
+    "inventory": "Main warehouse",
+    "teamStock": "Team stock",
     "vehicles": "Vehicles & bags",
     "movements": "Movements",
     "reports": "Reports",
@@ -56,6 +57,8 @@
     "inStockShort": "in stock",
     "minShort": "min",
     "goToInventory": "Go to inventory →",
+    "goToTeamStock": "Go to team stock →",
+    "mainLowStockBanner": "{count} item(s) running low in the main warehouse",
     "recentCalls": "Recent calls",
     "allCalls": "All calls →",
     "dateTime": "Date & time",
@@ -93,6 +96,10 @@
     "allItems": "All items",
     "operation": "Operation",
     "allOperations": "All operations",
+    "warehouse": "Warehouse",
+    "allWarehouses": "All warehouses",
+    "warehouseMain": "Main",
+    "warehouseTeam": "Team",
     "employee": "Employee",
     "allEmployees": "All employees",
     "fromDate": "From date",
@@ -124,7 +131,7 @@
     "deletedItem": "Deleted item"
   },
   "inventory": {
-    "title": "Inventory",
+    "title": "Main warehouse",
     "newItem": "New item",
     "searchPlaceholder": "Search by name...",
     "allCategories": "All categories",
@@ -159,7 +166,13 @@
     "descriptionOptional": "Description (optional)",
     "descriptionPlaceholder": "Additional information...",
     "save": "Save",
-    "add": "Add"
+    "add": "Add",
+    "issueToTeam": "Issue to team",
+    "issueTitle": "Issue to team stock",
+    "currentMainStock": "Currently in main warehouse",
+    "howMuchToIssue": "How much to issue, {unit}",
+    "mainWillBecome": "Main warehouse will become",
+    "issue": "Issue"
   },
   "vehicles": {
     "title": "Vehicles & bags",
@@ -281,5 +294,18 @@
       "deleting": "Error deleting the call",
       "migrationsNeeded": "Database is out of date: apply the Supabase migrations."
     }
+  },
+  "teamStock": {
+    "title": "Team stock",
+    "subtitle": "What's currently issued to the team — write-offs during calls come from here",
+    "searchPlaceholder": "Search by name...",
+    "allCategories": "All categories",
+    "code": "Code",
+    "name": "Name",
+    "category": "Category",
+    "unit": "Unit",
+    "stock": "In stock",
+    "minimum": "Minimum",
+    "noneFound": "Nothing has been issued to the team yet"
   }
 }

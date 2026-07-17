@@ -1,20 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Edit2, Plus, PackagePlus, Search, X, Loader2, Trash2 } from 'lucide-react'
+import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Search, X, Loader2, Trash2 } from 'lucide-react'
 import {
   createConsumableAction,
   updateConsumableAction,
   restockConsumableAction,
   archiveConsumableAction,
+  transferToTeamStockAction,
 } from './actions'
-import type { Consumable, ConsumableUnit, ConsumableCategory } from '@/types'
+import type { Consumable, ConsumableUnit } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
-import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
 import { cn, isLowStock } from '@/lib/utils'
 
-const UNITS: ConsumableUnit[] = ['pcs', 'pair', 'ml', 'l', 'g', 'kg', 'pack', 'vial', 'amp']
-const CATEGORIES: ConsumableCategory[] = ['ppe', 'dressings', 'instruments', 'solutions', 'medications', 'other']
 const ALL_CATEGORIES = 'all'
 
 interface Props {
@@ -34,7 +33,7 @@ const emptyForm = {
   description: '',
 }
 
-type ModalMode = 'edit' | 'add' | 'restock' | 'delete' | null
+type ModalMode = 'edit' | 'add' | 'restock' | 'delete' | 'issue' | null
 
 export default function InventoryClient({ lang, dict, consumables: initial, isAdmin }: Props) {
   const [consumables, setConsumables] = useState(initial)
@@ -44,6 +43,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   const [target, setTarget] = useState<Consumable | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [restockQty, setRestockQty] = useState(1)
+  const [issueQty, setIssueQty] = useState(1)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -71,6 +71,12 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
     setTarget(c)
     setRestockQty(1)
     setModal('restock')
+  }
+
+  function openIssue(c: Consumable) {
+    setTarget(c)
+    setIssueQty(1)
+    setModal('issue')
   }
 
   function openAdd() {
@@ -129,6 +135,18 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
     closeModal()
   }
 
+  async function handleIssue() {
+    if (!target || issueQty <= 0) return
+    setSaving(true)
+    setSaveError('')
+    const { error } = await transferToTeamStockAction(lang, target.id, issueQty)
+
+    if (error) { setSaveError(error); setSaving(false); return }
+    setConsumables(prev => prev.map(c => c.id === target.id ? { ...c, qty_in_stock: c.qty_in_stock - issueQty } : c))
+    setSaving(false)
+    closeModal()
+  }
+
   async function handleDelete() {
     if (!target) return
     setSaving(true)
@@ -179,7 +197,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
           className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value={ALL_CATEGORIES}>{dict.inventory.allCategories}</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
+          {CONSUMABLE_CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
         </select>
       </div>
 
@@ -227,6 +245,9 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                       <button onClick={() => openRestock(item)} title={dict.inventory.restock} className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
                         <PackagePlus className="w-3.5 h-3.5" />
                       </button>
+                      <button onClick={() => openIssue(item)} title={dict.inventory.issueToTeam} disabled={item.qty_in_stock <= 0} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors">
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={() => openEdit(item)} title={dict.inventory.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -268,6 +289,9 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 {isAdmin && <div className="flex flex-col gap-1 shrink-0">
                   <button onClick={() => openRestock(item)} className="p-1.5 text-green-600 bg-green-50 rounded-lg">
                     <PackagePlus className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => openIssue(item)} disabled={item.qty_in_stock <= 0} className="p-1.5 text-blue-600 bg-blue-50 rounded-lg disabled:opacity-30">
+                    <Send className="w-4 h-4" />
                   </button>
                   <button onClick={() => openEdit(item)} className="p-1.5 text-slate-500 bg-slate-100 rounded-lg">
                     <Edit2 className="w-4 h-4" />
@@ -412,6 +436,85 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         </div>
       )}
 
+      {/* Issue to team modal */}
+      {modal === 'issue' && target && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">{dict.inventory.issueTitle}</h2>
+              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 rounded-lg px-4 py-3">
+                <div className="text-sm font-medium text-slate-800">{target.name}</div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {dict.inventory.currentMainStock}: <span className="font-semibold text-slate-700">{target.qty_in_stock} {unitLabel(dict, target.unit)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {dict.inventory.howMuchToIssue.replace('{unit}', unitLabel(dict, target.unit))}
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIssueQty(q => Math.max(1, q - 1))}
+                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={target.qty_in_stock}
+                    value={issueQty}
+                    onChange={e => setIssueQty(Math.max(1, Math.min(target.qty_in_stock, Number(e.target.value))))}
+                    className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIssueQty(q => Math.min(target.qty_in_stock, q + 1))}
+                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+                {dict.inventory.mainWillBecome}: <span className="font-bold">{target.qty_in_stock - issueQty} {unitLabel(dict, target.unit)}</span>
+              </div>
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                  {dict.inventory.error}: {saveError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+              <button
+                onClick={closeModal}
+                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                {dict.inventory.cancel}
+              </button>
+              <button
+                onClick={handleIssue}
+                disabled={saving || issueQty <= 0 || issueQty > target.qty_in_stock}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {dict.inventory.issue}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit / Add modal */}
       {(modal === 'edit' || modal === 'add') && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -454,7 +557,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
                   >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
+                    {CONSUMABLE_CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -464,7 +567,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     onChange={e => setForm(f => ({ ...f, unit: e.target.value as ConsumableUnit }))}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
                   >
-                    {UNITS.map(u => <option key={u} value={u}>{unitLabel(dict, u)}</option>)}
+                    {CONSUMABLE_UNITS.map(u => <option key={u} value={u}>{unitLabel(dict, u)}</option>)}
                   </select>
                 </div>
               </div>

@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { AlertTriangle, Phone, Package, Plus } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 import { formatDateTime, isLowStock } from '@/lib/utils'
 import { unitLabel } from '@/lib/consumable-labels'
 import { getCallsCountSince, getRecentCalls } from '@/lib/data/calls'
 import { getStockLevels } from '@/lib/data/consumables'
+import { getTeamStock } from '@/lib/data/team-stock'
 import { getWriteoffsSince } from '@/lib/data/writeoffs'
+import { getProfile } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 
@@ -22,19 +25,28 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
 
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims.sub
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayIso = today.toISOString()
 
-  const [callsToday, recentCalls, allConsumables, writeoffsToday] = await Promise.all([
+  const [callsToday, recentCalls, teamStock, writeoffsToday, profile] = await Promise.all([
     getCallsCountSince(todayIso),
     getRecentCalls(5),
-    getStockLevels(),
+    getTeamStock(),
     getWriteoffsSince(todayIso),
+    getProfile(userId!),
   ])
 
+  const isAdmin = profile?.role === 'admin'
+  const mainStockLevels = isAdmin ? await getStockLevels() : []
+
   const totalWrittenOff = writeoffsToday.reduce((s, w) => s + w.quantity, 0)
-  const lowStockItems = allConsumables.filter(c => isLowStock(c.qty_in_stock, c.qty_minimum))
+  const lowStockItems = teamStock.filter(item => isLowStock(item.qty_in_stock, item.consumable?.qty_minimum ?? 0))
+  const mainLowStockCount = mainStockLevels.filter(c => isLowStock(c.qty_in_stock, c.qty_minimum)).length
 
   return (
     <div className="space-y-6">
@@ -84,7 +96,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
         </div>
       </div>
 
-      {/* Low stock alert */}
+      {/* Main warehouse low-stock banner — admin only, procurement concern, separate from team stock's operational one */}
+      {isAdmin && mainLowStockCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            {dict.dashboard.mainLowStockBanner.replace('{count}', String(mainLowStockCount))}
+          </div>
+          <Link href={`/${lang}/inventory`} className="text-sm text-amber-800 hover:text-amber-900 font-medium whitespace-nowrap">
+            {dict.dashboard.goToInventory}
+          </Link>
+        </div>
+      )}
+
+      {/* Low stock alert (team stock — this is what actually blocks a call) */}
       {lowStockItems.length > 0 && (
         <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
           <div className="px-5 py-3 bg-red-50 border-b border-red-200 flex items-center gap-2">
@@ -94,17 +119,17 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
           <div className="divide-y divide-slate-100">
             {lowStockItems.map(item => (
               <div key={item.id} className="px-5 py-3 flex items-center justify-between">
-                <span className="text-sm text-slate-800">{item.name}</span>
+                <span className="text-sm text-slate-800">{item.consumable?.name}</span>
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="text-red-600 font-medium">{dict.dashboard.inStockShort}: {item.qty_in_stock} {unitLabel(dict, item.unit)}</span>
-                  <span className="text-slate-400">{dict.dashboard.minShort}: {item.qty_minimum}</span>
+                  <span className="text-red-600 font-medium">{dict.dashboard.inStockShort}: {item.qty_in_stock} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</span>
+                  <span className="text-slate-400">{dict.dashboard.minShort}: {item.consumable?.qty_minimum ?? 0}</span>
                 </div>
               </div>
             ))}
           </div>
           <div className="px-5 py-3 border-t border-slate-100">
-            <Link href={`/${lang}/inventory`} className="text-sm text-red-600 hover:text-red-700 font-medium">
-              {dict.dashboard.goToInventory}
+            <Link href={`/${lang}/team-stock`} className="text-sm text-red-600 hover:text-red-700 font-medium">
+              {dict.dashboard.goToTeamStock}
             </Link>
           </div>
         </div>

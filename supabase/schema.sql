@@ -96,18 +96,33 @@ create table public.stock_movements (
   quantity_after integer not null,
   user_id uuid references public.users(id),
   organization_id uuid not null references public.organizations(id),
+  warehouse text not null default 'main' check (warehouse in ('main', 'team')),
   created_at timestamptz not null default now()
+);
+
+-- Склад команды: маленький общий склад, отдельный от основного. Строка
+-- появляется только когда позицию впервые выдали со склада — команда не
+-- видит то, что ей не выдавали (запросы делают inner join к этой таблице).
+create table public.team_stock (
+  id uuid default gen_random_uuid() primary key,
+  consumable_id uuid not null references public.consumables(id) on delete cascade,
+  qty_in_stock integer not null default 0 check (qty_in_stock >= 0),
+  organization_id uuid not null references public.organizations(id),
+  created_at timestamptz not null default now(),
+  unique (consumable_id)
 );
 
 create index stock_movements_created_at_idx on public.stock_movements(created_at desc);
 create index stock_movements_consumable_id_idx on public.stock_movements(consumable_id, created_at desc);
 create index stock_movements_user_id_idx on public.stock_movements(user_id, created_at desc);
+create index stock_movements_warehouse_idx on public.stock_movements(warehouse, created_at desc);
 
 -- Индексы под паттерны запросов приложения (lib/data/*.ts), все org-scoped.
 create index users_organization_id_idx on public.users(organization_id);
 create index calls_organization_id_date_idx on public.calls(organization_id, date desc);
 create index writeoffs_organization_id_created_at_idx on public.writeoffs(organization_id, created_at desc);
 create index stock_movements_organization_id_created_at_idx on public.stock_movements(organization_id, created_at desc);
+create index team_stock_organization_id_idx on public.team_stock(organization_id);
 
 -- RLS (Row Level Security) — каждая организация видит только свои данные.
 alter table public.organizations enable row level security;
@@ -118,6 +133,7 @@ alter table public.consumables enable row level security;
 alter table public.calls enable row level security;
 alter table public.writeoffs enable row level security;
 alter table public.stock_movements enable row level security;
+alter table public.team_stock enable row level security;
 
 create or replace function public.is_admin()
 returns boolean
@@ -216,6 +232,12 @@ create policy "Owners or admins delete writeoffs" on public.writeoffs
 create policy "Authenticated read stock movements" on public.stock_movements
   for select to authenticated using (organization_id = public.current_org_id());
 
+-- team_stock не даёт insert/update напрямую с клиента — только select. Все
+-- изменения количества идут через transfer_to_team_stock/adjust_team_stock
+-- (security definer), как и остальные операции с остатками в этой схеме.
+create policy "Authenticated read team stock" on public.team_stock
+  for select to authenticated using (organization_id = public.current_org_id());
+
 -- Функция: автоматически создавать профиль при регистрации.
 -- organization_id обязателен в raw_user_meta_data (передаётся при создании
 -- пользователя через Dashboard/Admin API) — без него транзакция откатывается.
@@ -265,10 +287,10 @@ begin
 
     insert into public.stock_movements (
       consumable_id, movement_type, quantity_delta,
-      quantity_before, quantity_after, user_id, organization_id
+      quantity_before, quantity_after, user_id, organization_id, warehouse
     ) values (
       new.id, 'opening_balance', new.qty_in_stock,
-      0, new.qty_in_stock, auth.uid(), new.organization_id
+      0, new.qty_in_stock, auth.uid(), new.organization_id, 'main'
     );
     return new;
   end if;
@@ -280,11 +302,11 @@ begin
 
   insert into public.stock_movements (
     consumable_id, movement_type, quantity_delta,
-    quantity_before, quantity_after, user_id, organization_id
+    quantity_before, quantity_after, user_id, organization_id, warehouse
   ) values (
     new.id,
     case when delta > 0 then 'increase' else 'decrease' end,
-    delta, old.qty_in_stock, new.qty_in_stock, auth.uid(), new.organization_id
+    delta, old.qty_in_stock, new.qty_in_stock, auth.uid(), new.organization_id, 'main'
   );
 
   return new;
@@ -332,6 +354,115 @@ end;
 $$;
 
 revoke all on function public.adjust_stock(uuid, integer) from public;
+
+-- Журнал движений склада команды — отдельный триггер, тот же stock_movements,
+-- warehouse = 'team' отличает от основного склада.
+create or replace function public.log_team_stock_movement()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  delta integer;
+begin
+  if tg_op = 'INSERT' then
+    if new.qty_in_stock = 0 then
+      return new;
+    end if;
+
+    insert into public.stock_movements (
+      consumable_id, movement_type, quantity_delta,
+      quantity_before, quantity_after, user_id, organization_id, warehouse
+    ) values (
+      new.consumable_id, 'opening_balance', new.qty_in_stock,
+      0, new.qty_in_stock, auth.uid(), new.organization_id, 'team'
+    );
+    return new;
+  end if;
+
+  delta := new.qty_in_stock - old.qty_in_stock;
+  if delta = 0 then
+    return new;
+  end if;
+
+  insert into public.stock_movements (
+    consumable_id, movement_type, quantity_delta,
+    quantity_before, quantity_after, user_id, organization_id, warehouse
+  ) values (
+    new.consumable_id,
+    case when delta > 0 then 'increase' else 'decrease' end,
+    delta, old.qty_in_stock, new.qty_in_stock, auth.uid(), new.organization_id, 'team'
+  );
+
+  return new;
+end;
+$$;
+
+create trigger team_stock_movement
+  after insert or update of qty_in_stock on public.team_stock
+  for each row execute function public.log_team_stock_movement();
+
+-- Атомарное изменение остатка склада команды. Строка создаётся при первой
+-- выдаче (см. transfer_to_team_stock) или лениво здесь же — что бы ни
+-- вызвало adjust_team_stock первым. WHERE-guard в update делает проверку
+-- "хватает ли" атомарной, без отдельного select-then-act.
+create or replace function public.adjust_team_stock(p_consumable_id uuid, p_delta integer)
+returns public.team_stock
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  updated public.team_stock;
+  current_qty integer;
+begin
+  insert into public.team_stock (consumable_id, qty_in_stock, organization_id)
+  values (p_consumable_id, 0, (select organization_id from public.consumables where id = p_consumable_id))
+  on conflict (consumable_id) do nothing;
+
+  update public.team_stock
+  set qty_in_stock = qty_in_stock + p_delta
+  where consumable_id = p_consumable_id and qty_in_stock + p_delta >= 0
+  returning * into updated;
+
+  if not found then
+    select qty_in_stock into current_qty from public.team_stock where consumable_id = p_consumable_id;
+    raise exception 'Not enough of this item in team stock (in stock: %, requested: %)', current_qty, -p_delta;
+  end if;
+
+  return updated;
+end;
+$$;
+
+revoke all on function public.adjust_team_stock(uuid, integer) from public;
+
+-- Выдача со склада: списывает с основного (переиспользует adjust_stock —
+-- та же проверка отрицательного остатка) и прибавляет на склад команды.
+create or replace function public.transfer_to_team_stock(p_consumable_id uuid, p_quantity integer)
+returns public.team_stock
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only an administrator can issue stock to the team';
+  end if;
+  if p_quantity <= 0 then
+    raise exception 'Transfer quantity must be greater than zero';
+  end if;
+  if not exists (
+    select 1 from public.consumables
+    where id = p_consumable_id and is_active = true and organization_id = public.current_org_id()
+  ) then
+    raise exception 'Item not found or removed from inventory';
+  end if;
+
+  perform public.adjust_stock(p_consumable_id, -p_quantity);
+  return public.adjust_team_stock(p_consumable_id, p_quantity);
+end;
+$$;
+
+revoke all on function public.transfer_to_team_stock(uuid, integer) from public;
+grant execute on function public.transfer_to_team_stock(uuid, integer) to authenticated;
 
 -- adjust_stock не выдан authenticated напрямую — вызывается только из функций
 -- ниже, каждая из которых уже проверила принадлежность организации.
@@ -546,7 +677,7 @@ begin
       raise exception 'Consumable % not found or removed from inventory', item.consumable_id;
     end if;
 
-    perform public.adjust_stock(item.consumable_id, -item.quantity);
+    perform public.adjust_team_stock(item.consumable_id, -item.quantity);
     insert into public.writeoffs (call_id, consumable_id, quantity, user_id, organization_id)
     values (new_call_id, item.consumable_id, item.quantity, auth.uid(), v_org_id);
   end loop;
@@ -600,7 +731,7 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
-    perform public.adjust_stock(item.consumable_id, item.quantity);
+    perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 
   delete from public.writeoffs where call_id = p_call_id and organization_id = v_org_id;
@@ -627,7 +758,7 @@ begin
       raise exception 'Consumable % not found', item.consumable_id;
     end if;
 
-    perform public.adjust_stock(item.consumable_id, -item.quantity);
+    perform public.adjust_team_stock(item.consumable_id, -item.quantity);
     insert into public.writeoffs (call_id, consumable_id, quantity, user_id, organization_id)
     values (p_call_id, item.consumable_id, item.quantity, auth.uid(), v_org_id);
   end loop;
@@ -665,7 +796,7 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
-    perform public.adjust_stock(item.consumable_id, item.quantity);
+    perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 
   delete from public.calls where id = p_call_id and organization_id = v_org_id;

@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, History } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { getStockMovements } from '@/lib/data/movements'
+import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
 import { getUserOptions } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../../dictionaries'
@@ -21,6 +21,7 @@ export default async function MovementsPage({
     consumable?: string
     user?: string
     type?: StockMovementType
+    warehouse?: Warehouse
     from?: string
     to?: string
   }>
@@ -34,6 +35,10 @@ export default async function MovementsPage({
     increase: dict.movements.typeIncrease,
     decrease: dict.movements.typeDecrease,
   }
+  const warehouseLabels: Record<Warehouse, string> = {
+    main: dict.movements.warehouseMain,
+    team: dict.movements.warehouseTeam,
+  }
 
   const sp = await searchParams
   const from = validDate(sp.from)
@@ -44,6 +49,7 @@ export default async function MovementsPage({
       consumableId: sp.consumable,
       userId: sp.user,
       type: sp.type && sp.type in movementLabels ? sp.type : undefined,
+      warehouse: sp.warehouse === 'main' || sp.warehouse === 'team' ? sp.warehouse : undefined,
       fromIso: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
       toIso: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
     }),
@@ -77,6 +83,13 @@ export default async function MovementsPage({
           </select>
         </label>
         <label className="text-sm text-slate-600">
+          <span className="block mb-1.5 font-medium">{dict.movements.warehouse}</span>
+          <select name="warehouse" defaultValue={sp.warehouse ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+            <option value="">{dict.movements.allWarehouses}</option>
+            {Object.entries(warehouseLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-slate-600">
           <span className="block mb-1.5 font-medium">{dict.movements.employee}</span>
           <select name="user" defaultValue={sp.user ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white max-w-48">
             <option value="">{dict.movements.allEmployees}</option>
@@ -92,7 +105,7 @@ export default async function MovementsPage({
           <input name="to" type="date" defaultValue={to} className="px-3 py-2 border border-slate-300 rounded-lg" />
         </label>
         <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.movements.apply}</button>
-        {(sp.consumable || sp.user || sp.type || from || to) && (
+        {(sp.consumable || sp.user || sp.type || sp.warehouse || from || to) && (
           <a href={`/${lang}/movements`} className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm rounded-lg">{dict.movements.reset}</a>
         )}
       </form>
@@ -119,6 +132,7 @@ export default async function MovementsPage({
             <table className="hidden md:table w-full">
               <thead><tr className="text-xs text-slate-400 uppercase border-b border-slate-100">
                 <th className="text-left px-5 py-3">{dict.movements.date}</th><th className="text-left px-5 py-3">{dict.movements.item}</th>
+                <th className="text-left px-5 py-3">{dict.movements.warehouse}</th>
                 <th className="text-left px-5 py-3">{dict.movements.operation}</th><th className="text-right px-5 py-3">{dict.movements.change}</th>
                 <th className="text-right px-5 py-3">{dict.movements.stock}</th><th className="text-left px-5 py-3">{dict.movements.employee}</th>
               </tr></thead>
@@ -126,6 +140,11 @@ export default async function MovementsPage({
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 text-sm text-slate-500 whitespace-nowrap">{formatDateTime(item.created_at, lang)}</td>
                   <td className="px-5 py-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className="text-xs text-slate-400">{item.consumable ? categoryLabel(dict, item.consumable.category) : ''}</div></td>
+                  <td className="px-5 py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.warehouse === 'team' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {warehouseLabels[item.warehouse]}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 text-sm text-slate-600">{movementLabels[item.movement_type]}</td>
                   <td className={`px-5 py-3 text-right text-sm font-bold ${item.quantity_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>{item.quantity_delta > 0 ? '+' : ''}{item.quantity_delta} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</td>
                   <td className="px-5 py-3 text-right text-sm text-slate-600">{item.quantity_before} → <span className="font-semibold text-slate-900">{item.quantity_after}</span></td>
@@ -135,8 +154,14 @@ export default async function MovementsPage({
             </table>
             <div className="md:hidden divide-y divide-slate-100">{movements.map(item => (
               <div key={item.id} className="px-4 py-3">
-                <div className="flex justify-between gap-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className={`text-sm font-bold ${item.quantity_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>{item.quantity_delta > 0 ? '+' : ''}{item.quantity_delta} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</div></div>
-                <div className="flex justify-between gap-3 mt-1 text-xs text-slate-400"><span>{movementLabels[item.movement_type]} · {item.user?.name ?? dict.movements.system}</span><span>{item.quantity_before} → {item.quantity_after}</span></div>
+                <div className="flex justify-between gap-3">
+                  <div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div>
+                  <div className={`text-sm font-bold ${item.quantity_delta > 0 ? 'text-green-600' : 'text-red-600'}`}>{item.quantity_delta > 0 ? '+' : ''}{item.quantity_delta} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</div>
+                </div>
+                <div className="flex justify-between gap-3 mt-1 text-xs text-slate-400">
+                  <span>{warehouseLabels[item.warehouse]} · {movementLabels[item.movement_type]} · {item.user?.name ?? dict.movements.system}</span>
+                  <span>{item.quantity_before} → {item.quantity_after}</span>
+                </div>
                 <div className="text-xs text-slate-400 mt-1">{formatDateTime(item.created_at, lang)}</div>
               </div>
             ))}</div>

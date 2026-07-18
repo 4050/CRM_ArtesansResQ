@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:schema": "node scripts/check-schema-sync.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

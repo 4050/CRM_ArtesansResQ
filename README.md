@@ -73,7 +73,10 @@ insert into public.organizations (name) values ('Название подстан
 npm run lint
 npx tsc --noEmit
 npm run build
+npm run check:schema
 ```
+
+`npm run check:schema` (`scripts/check-schema-sync.mjs`) сверяет `supabase/schema.sql` с последней версией каждой функции/политики/триггера/колонки из `supabase/migrations/*.sql` — оба файла поддерживаются вручную параллельно, и эта проверка ловит момент, когда они расходятся. Запускайте её после любого изменения в `supabase/`, в том числе после каждой новой миграции.
 
 Интерфейс доступен на английском (`/en/...`) и украинском (`/uk/...`) — язык определяется автоматически (`Accept-Language`) или выбирается переключателем в сайдбаре и запоминается в cookie. Русской локализации нет.
 

@@ -86,6 +86,8 @@ npm run check:schema
 
 `npm run check:schema` (`scripts/check-schema-sync.mjs`) diffs `supabase/schema.sql` against the latest state of every function/policy/trigger/column across `supabase/migrations/*.sql` — both files are maintained by hand in parallel, and this check catches the moment they drift apart. Run it after any change under `supabase/`, including after every new migration.
 
+All four checks also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo.
+
 The UI is available in English (`/en/...`) and Ukrainian (`/uk/...`) — the language is detected automatically (`Accept-Language`) or chosen via the switcher in the sidebar and remembered in a cookie. There is no Russian localization.
 
 Main routes: `/{lang}/dashboard`, `/{lang}/calls`, `/{lang}/writeoffs`, `/{lang}/team-stock`, `/{lang}/inventory`, `/{lang}/vehicles`, `/{lang}/movements`, `/{lang}/reports`, `/{lang}/users`.

@@ -17,7 +17,7 @@ values ('11111111-1111-1111-1111-111111111111', 'МедСклад — основ
 create table public.users (
   id uuid references auth.users(id) on delete cascade primary key,
   name text not null,
-  role text not null default 'medic' check (role in ('admin', 'medic')),
+  role text not null default 'medic' check (role in ('master_admin', 'admin', 'medic')),
   brigade text,
   organization_id uuid not null references public.organizations(id),
   created_at timestamptz default now()
@@ -135,6 +135,9 @@ alter table public.writeoffs enable row level security;
 alter table public.stock_movements enable row level security;
 alter table public.team_stock enable row level security;
 
+-- master_admin has every admin capability plus user-role management —
+-- widening this one check makes it flow automatically into every existing
+-- admin-gated policy/RPC below without touching each of them individually.
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -143,7 +146,19 @@ security definer set search_path = ''
 as $$
   select exists (
     select 1 from public.users
-    where id = auth.uid() and role = 'admin'
+    where id = auth.uid() and role in ('admin', 'master_admin')
+  );
+$$;
+
+create or replace function public.is_master_admin()
+returns boolean
+language sql
+stable
+security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from public.users
+    where id = auth.uid() and role = 'master_admin'
   );
 $$;
 
@@ -612,6 +627,39 @@ $$;
 
 revoke all on function public.delete_bag(uuid) from public;
 grant execute on function public.delete_bag(uuid) to authenticated;
+
+-- Назначение ролей — только master_admin, и только admin/medic в качестве
+-- цели (второй master_admin заводится вручную через SQL Editor, как и
+-- первый — не через этот RPC). Менять собственную роль через этот путь
+-- нельзя, чтобы исключить случайную потерю доступа.
+create or replace function public.set_user_role(p_user_id uuid, p_role text)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if not public.is_master_admin() then
+    raise exception 'Only a master admin can change user roles';
+  end if;
+  if p_role not in ('admin', 'medic') then
+    raise exception 'Role must be admin or medic';
+  end if;
+  if p_user_id = auth.uid() then
+    raise exception 'You cannot change your own role';
+  end if;
+
+  update public.users
+  set role = p_role
+  where id = p_user_id and organization_id = public.current_org_id();
+
+  if not found then
+    raise exception 'User not found in your organization';
+  end if;
+end;
+$$;
+
+revoke all on function public.set_user_role(uuid, text) from public;
+grant execute on function public.set_user_role(uuid, text) to authenticated;
 
 -- Транзакционные операции с вызовами. Один вызов RPC выполняется PostgreSQL
 -- целиком: при любой ошибке вызов, списания и остатки откатываются вместе.

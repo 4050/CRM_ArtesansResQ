@@ -14,6 +14,7 @@
     "vehicles": "Vehicles & bags",
     "movements": "Movements",
     "reports": "Reports",
+    "users": "Users",
     "newCall": "New call",
     "logout": "Log out"
   },
@@ -307,5 +308,18 @@
     "stock": "In stock",
     "minimum": "Minimum",
     "noneFound": "Nothing has been issued to the team yet"
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage roles for members of your organization",
+    "name": "Name",
+    "role": "Role",
+    "error": "Error",
+    "thisIsYou": "(you)",
+    "roleLabels": {
+      "master_admin": "Master admin",
+      "admin": "Admin",
+      "medic": "Medic"
+    }
   }
 }

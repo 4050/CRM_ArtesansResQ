@@ -1,11 +1,13 @@
 import { ArrowDown, ArrowUp, History } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 import { formatDateTime } from '@/lib/utils'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
-import { getUserOptions } from '@/lib/data/users'
+import { getUserOptions, getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { StockMovementType } from '@/types'
 
 function validDate(value?: string) {
@@ -29,6 +31,12 @@ export default async function MovementsPage({
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
+
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims.sub
+  const profile = await getProfile(userId!)
+  if (!isAdminRole(profile?.role)) redirect(`/${lang}/dashboard`)
 
   const movementLabels: Record<StockMovementType, string> = {
     opening_balance: dict.movements.typeOpeningBalance,

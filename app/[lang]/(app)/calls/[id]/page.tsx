@@ -6,6 +6,7 @@ import { formatDateTime, toBCP47 } from '@/lib/utils'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
 import { getCallDetail } from '@/lib/data/calls'
 import { getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../../dictionaries'
 import DeleteCallButton from './DeleteCallButton'
 
@@ -30,7 +31,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
   const vehicle = call.vehicle as { number: string; name: string | null } | null
   const bag = call.bag as { number: string; description: string | null } | null
   const callUser = call.user as { name: string } | null
-  const canManage = call.user_id === authUserId || profile?.role === 'admin'
+  const canManage = call.user_id === authUserId || isAdminRole(profile?.role)
   const writeoffs = (call.writeoffs ?? []) as {
     id: string
     quantity: number

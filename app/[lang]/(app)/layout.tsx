@@ -31,6 +31,7 @@ export default async function AppLayout({
       <Sidebar
         lang={lang}
         userName={userName}
+        role={profile?.role ?? 'medic'}
         nav={dict.nav}
         appName={dict.common.appName}
         appTagline={dict.common.appTagline}

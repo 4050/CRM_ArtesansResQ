@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { getAllVehicles } from '@/lib/data/vehicles'
 import { getBagsWithVehicle } from '@/lib/data/bags'
 import { getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 import VehiclesClient from './VehiclesClient'
@@ -15,11 +17,13 @@ export default async function VehiclesPage({ params }: { params: Promise<{ lang:
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims.sub
 
-  const [vehicles, bags, profile] = await Promise.all([
+  const profile = await getProfile(userId!)
+  if (!isAdminRole(profile?.role)) redirect(`/${lang}/dashboard`)
+
+  const [vehicles, bags] = await Promise.all([
     getAllVehicles(),
     getBagsWithVehicle(),
-    getProfile(userId!),
   ])
 
-  return <VehiclesClient lang={lang} dict={dict} vehicles={vehicles} bags={bags} isAdmin={profile?.role === 'admin'} />
+  return <VehiclesClient lang={lang} dict={dict} vehicles={vehicles} bags={bags} isAdmin={isAdminRole(profile?.role)} />
 }

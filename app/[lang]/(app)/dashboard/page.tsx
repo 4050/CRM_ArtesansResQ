@@ -8,6 +8,7 @@ import { getStockLevels } from '@/lib/data/consumables'
 import { getTeamStock } from '@/lib/data/team-stock'
 import { getWriteoffsSince } from '@/lib/data/writeoffs'
 import { getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 
@@ -41,7 +42,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
     getProfile(userId!),
   ])
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = isAdminRole(profile?.role)
   const mainStockLevels = isAdmin ? await getStockLevels() : []
 
   const totalWrittenOff = writeoffsToday.reduce((s, w) => s + w.quantity, 0)

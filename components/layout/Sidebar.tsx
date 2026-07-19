@@ -3,38 +3,52 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ClipboardList, Package, Boxes, BarChart3, LogOut, Ambulance, Menu, X, Plus, ArrowLeftRight, Truck } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Package, Boxes, BarChart3, LogOut, Ambulance, Menu, X, Plus, ArrowLeftRight, Truck, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAction } from '@/lib/actions/auth'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
+import type { UserRole } from '@/types'
+import { isAdminRole, isMasterAdmin } from '@/lib/roles'
 import LanguageSwitcher from './LanguageSwitcher'
 
 interface Props {
   lang: Locale
   userName: string
+  role: UserRole
   nav: Dictionary['nav']
   appName: string
   appTagline: string
 }
 
-function useNavItems(lang: Locale, nav: Dictionary['nav']) {
-  return [
+function useNavItems(lang: Locale, nav: Dictionary['nav'], role: UserRole) {
+  const items = [
     { href: `/${lang}/dashboard`, label: nav.dashboard, icon: LayoutDashboard },
     { href: `/${lang}/writeoffs`, label: nav.writeoffs, icon: ClipboardList },
     { href: `/${lang}/team-stock`, label: nav.teamStock, icon: Boxes },
-    { href: `/${lang}/inventory`, label: nav.inventory, icon: Package },
-    { href: `/${lang}/vehicles`, label: nav.vehicles, icon: Truck },
-    { href: `/${lang}/movements`, label: nav.movements, icon: ArrowLeftRight },
-    { href: `/${lang}/reports`, label: nav.reports, icon: BarChart3 },
   ]
+
+  if (isAdminRole(role)) {
+    items.push(
+      { href: `/${lang}/inventory`, label: nav.inventory, icon: Package },
+      { href: `/${lang}/vehicles`, label: nav.vehicles, icon: Truck },
+      { href: `/${lang}/movements`, label: nav.movements, icon: ArrowLeftRight },
+      { href: `/${lang}/reports`, label: nav.reports, icon: BarChart3 },
+    )
+  }
+
+  if (isMasterAdmin(role)) {
+    items.push({ href: `/${lang}/users`, label: nav.users, icon: Users })
+  }
+
+  return items
 }
 
-function NavContent({ lang, userName, nav, appName, appTagline, onClose, onLogout }: Props & {
+function NavContent({ lang, userName, role, nav, appName, appTagline, onClose, onLogout }: Props & {
   onClose?: () => void
   onLogout: () => void
 }) {
   const pathname = usePathname()
-  const items = useNavItems(lang, nav)
+  const items = useNavItems(lang, nav, role)
 
   return (
     <>
@@ -106,7 +120,7 @@ function NavContent({ lang, userName, nav, appName, appTagline, onClose, onLogou
   )
 }
 
-export default function Sidebar({ lang, userName, nav, appName, appTagline }: Props) {
+export default function Sidebar({ lang, userName, role, nav, appName, appTagline }: Props) {
   const [open, setOpen] = useState(false)
 
   async function handleLogout() {
@@ -117,7 +131,7 @@ export default function Sidebar({ lang, userName, nav, appName, appTagline }: Pr
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col h-screen fixed left-0 top-0">
-        <NavContent lang={lang} userName={userName} nav={nav} appName={appName} appTagline={appTagline} onLogout={handleLogout} />
+        <NavContent lang={lang} userName={userName} role={role} nav={nav} appName={appName} appTagline={appTagline} onLogout={handleLogout} />
       </aside>
 
       {/* Mobile top bar */}
@@ -144,6 +158,7 @@ export default function Sidebar({ lang, userName, nav, appName, appTagline }: Pr
             <NavContent
               lang={lang}
               userName={userName}
+              role={role}
               nav={nav}
               appName={appName}
               appTagline={appTagline}

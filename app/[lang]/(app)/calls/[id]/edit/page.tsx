@@ -5,6 +5,7 @@ import { getActiveVehicles } from '@/lib/data/vehicles'
 import { getActiveBags } from '@/lib/data/bags'
 import { getTeamStockOptions } from '@/lib/data/team-stock'
 import { getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../../../dictionaries'
 import EditCallForm from './EditCallForm'
 
@@ -28,7 +29,7 @@ export default async function EditCallPage({ params }: { params: Promise<{ lang:
   ])
 
   if (!call) notFound()
-  if (call.user_id !== userId && profile?.role !== 'admin') notFound()
+  if (call.user_id !== userId && !isAdminRole(profile?.role)) notFound()
 
   return (
     <EditCallForm

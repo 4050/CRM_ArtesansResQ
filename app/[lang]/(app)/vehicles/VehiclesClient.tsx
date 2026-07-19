@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Truck, ShoppingBag, X, Loader2, Edit2, Trash2, Ban, AlertTriangle } from 'lucide-react'
+import { Plus, Truck, ShoppingBag, Loader2, Edit2, Trash2, Ban, AlertTriangle } from 'lucide-react'
 import {
   createVehicleAction,
   updateVehicleAction,
@@ -15,6 +15,7 @@ import {
 import type { Vehicle, Bag } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { cn } from '@/lib/utils'
+import Modal from '@/components/ui/Modal'
 
 type BagRow = Bag & { vehicle?: { number: string } }
 
@@ -339,332 +340,296 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
 
       {/* Add / edit vehicle modal */}
       {(modal === 'add-vehicle' || modal === 'edit-vehicle') && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{modal === 'edit-vehicle' ? dict.vehicles.editVehicle : dict.vehicles.newVehicle}</h2>
-              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
-                <input
-                  value={vehicleForm.number}
-                  onChange={e => setVehicleForm(f => ({ ...f, number: e.target.value }))}
-                  placeholder={dict.vehicles.numberPlaceholder}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.nameOptional}</label>
-                <input
-                  value={vehicleForm.name}
-                  onChange={e => setVehicleForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder={dict.vehicles.namePlaceholder}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              {modal === 'edit-vehicle' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
-                  <select
-                    value={vehicleForm.is_active ? 'active' : 'inactive'}
-                    onChange={e => setVehicleForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                  >
-                    <option value="active">{dict.vehicles.statusActive}</option>
-                    <option value="inactive">{dict.vehicles.statusInactive}</option>
-                  </select>
-                </div>
-              )}
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleSaveVehicle}
-                disabled={saving || !vehicleForm.number.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {modal === 'edit-vehicle' ? dict.vehicles.save : dict.vehicles.add}
-              </button>
-            </div>
+        <Modal
+          title={modal === 'edit-vehicle' ? dict.vehicles.editVehicle : dict.vehicles.newVehicle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleSaveVehicle}
+              disabled={saving || !vehicleForm.number.trim()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {modal === 'edit-vehicle' ? dict.vehicles.save : dict.vehicles.add}
+            </button>
+          </>}
+        >
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
+            <input
+              value={vehicleForm.number}
+              onChange={e => setVehicleForm(f => ({ ...f, number: e.target.value }))}
+              placeholder={dict.vehicles.numberPlaceholder}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
           </div>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.nameOptional}</label>
+            <input
+              value={vehicleForm.name}
+              onChange={e => setVehicleForm(f => ({ ...f, name: e.target.value }))}
+              placeholder={dict.vehicles.namePlaceholder}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          {modal === 'edit-vehicle' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
+              <select
+                value={vehicleForm.is_active ? 'active' : 'inactive'}
+                onChange={e => setVehicleForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+              >
+                <option value="active">{dict.vehicles.statusActive}</option>
+                <option value="inactive">{dict.vehicles.statusInactive}</option>
+              </select>
+            </div>
+          )}
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Deactivate vehicle confirmation */}
       {modal === 'deactivate-vehicle' && vehicleTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.vehicles.deactivateVehicleTitle}</h2>
-              <button onClick={closeModal} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{dict.vehicles.deactivateVehicleWarning}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleDeactivateVehicle}
-                disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-                {dict.vehicles.makeInactive}
-              </button>
-            </div>
+        <Modal
+          title={dict.vehicles.deactivateVehicleTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleDeactivateVehicle}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              {dict.vehicles.makeInactive}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
           </div>
-        </div>
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.vehicles.deactivateVehicleWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Hard delete vehicle confirmation */}
       {modal === 'delete-vehicle' && vehicleTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.vehicles.deleteVehicleTitle}</h2>
-              <button onClick={closeModal} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{dict.vehicles.deleteVehicleWarning}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleDeleteVehicle}
-                disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {dict.vehicles.delete}
-              </button>
-            </div>
+        <Modal
+          title={dict.vehicles.deleteVehicleTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleDeleteVehicle}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {dict.vehicles.delete}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
           </div>
-        </div>
+          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.vehicles.deleteVehicleWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Add / edit bag modal */}
       {(modal === 'add-bag' || modal === 'edit-bag') && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{modal === 'edit-bag' ? dict.vehicles.editBag : dict.vehicles.newBag}</h2>
-              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.vehicleLabel}</label>
-                <select
-                  value={bagForm.vehicle_id}
-                  onChange={e => setBagForm(f => ({ ...f, vehicle_id: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                >
-                  {vehicles.filter(v => v.is_active || v.id === bagForm.vehicle_id).map(v => (
-                    <option key={v.id} value={v.id}>{v.number}{v.name ? ` — ${v.name}` : ''}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
-                <input
-                  value={bagForm.number}
-                  onChange={e => setBagForm(f => ({ ...f, number: e.target.value }))}
-                  placeholder={dict.vehicles.bagNumberPlaceholder}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.descriptionOptional}</label>
-                <input
-                  value={bagForm.description}
-                  onChange={e => setBagForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder={dict.vehicles.bagDescriptionPlaceholder}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              {modal === 'edit-bag' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
-                  <select
-                    value={bagForm.is_active ? 'active' : 'inactive'}
-                    onChange={e => setBagForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                  >
-                    <option value="active">{dict.vehicles.statusActive}</option>
-                    <option value="inactive">{dict.vehicles.statusInactive}</option>
-                  </select>
-                </div>
-              )}
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleSaveBag}
-                disabled={saving || !bagForm.number.trim() || !bagForm.vehicle_id}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {modal === 'edit-bag' ? dict.vehicles.save : dict.vehicles.add}
-              </button>
-            </div>
+        <Modal
+          title={modal === 'edit-bag' ? dict.vehicles.editBag : dict.vehicles.newBag}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleSaveBag}
+              disabled={saving || !bagForm.number.trim() || !bagForm.vehicle_id}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {modal === 'edit-bag' ? dict.vehicles.save : dict.vehicles.add}
+            </button>
+          </>}
+        >
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.vehicleLabel}</label>
+            <select
+              value={bagForm.vehicle_id}
+              onChange={e => setBagForm(f => ({ ...f, vehicle_id: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+            >
+              {vehicles.filter(v => v.is_active || v.id === bagForm.vehicle_id).map(v => (
+                <option key={v.id} value={v.id}>{v.number}{v.name ? ` — ${v.name}` : ''}</option>
+              ))}
+            </select>
           </div>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
+            <input
+              value={bagForm.number}
+              onChange={e => setBagForm(f => ({ ...f, number: e.target.value }))}
+              placeholder={dict.vehicles.bagNumberPlaceholder}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.descriptionOptional}</label>
+            <input
+              value={bagForm.description}
+              onChange={e => setBagForm(f => ({ ...f, description: e.target.value }))}
+              placeholder={dict.vehicles.bagDescriptionPlaceholder}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          {modal === 'edit-bag' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
+              <select
+                value={bagForm.is_active ? 'active' : 'inactive'}
+                onChange={e => setBagForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+              >
+                <option value="active">{dict.vehicles.statusActive}</option>
+                <option value="inactive">{dict.vehicles.statusInactive}</option>
+              </select>
+            </div>
+          )}
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Deactivate bag confirmation */}
       {modal === 'deactivate-bag' && bagTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.vehicles.deactivateBagTitle}</h2>
-              <button onClick={closeModal} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{dict.vehicles.deactivateBagWarning}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleDeactivateBag}
-                disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-                {dict.vehicles.makeInactive}
-              </button>
-            </div>
+        <Modal
+          title={dict.vehicles.deactivateBagTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleDeactivateBag}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              {dict.vehicles.makeInactive}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
           </div>
-        </div>
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.vehicles.deactivateBagWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Hard delete bag confirmation */}
       {modal === 'delete-bag' && bagTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.vehicles.deleteBagTitle}</h2>
-              <button onClick={closeModal} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{dict.vehicles.deleteBagWarning}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.vehicles.error}: {saveError}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.vehicles.cancel}
-              </button>
-              <button
-                onClick={handleDeleteBag}
-                disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {dict.vehicles.delete}
-              </button>
-            </div>
+        <Modal
+          title={dict.vehicles.deleteBagTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.vehicles.cancel}
+            </button>
+            <button
+              onClick={handleDeleteBag}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {dict.vehicles.delete}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
           </div>
-        </div>
+          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.vehicles.deleteBagWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.vehicles.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   )

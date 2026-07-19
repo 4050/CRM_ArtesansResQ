@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Edit2, Plus, PackagePlus, Send, X, Loader2, Trash2 } from 'lucide-react'
+import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2 } from 'lucide-react'
 import {
   createConsumableAction,
   updateConsumableAction,
@@ -13,6 +13,7 @@ import type { Consumable, ConsumableUnit } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
+import Modal from '@/components/ui/Modal'
 
 interface Props {
   lang: Locale
@@ -229,223 +230,206 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
 
       {/* Delete confirmation */}
       {modal === 'delete' && target && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.inventory.deleteTitle}</h2>
-              <button onClick={closeModal} disabled={saving} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-900">{target.name}</div>
-                <div className="text-xs text-slate-500 mt-1">{dict.inventory.inStockShort}: {target.qty_in_stock} {unitLabel(dict, target.unit)}</div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{dict.inventory.deleteWarning}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.inventory.error}: {saveError}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                {dict.inventory.cancel}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                {dict.inventory.delete}
-              </button>
-            </div>
+        <Modal
+          title={dict.inventory.deleteTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.inventory.cancel}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {dict.inventory.delete}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{target.name}</div>
+            <div className="text-xs text-slate-500 mt-1">{dict.inventory.inStockShort}: {target.qty_in_stock} {unitLabel(dict, target.unit)}</div>
           </div>
-        </div>
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.inventory.deleteWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.inventory.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Restock modal */}
       {modal === 'restock' && target && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.inventory.restockTitle}</h2>
-              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+        <Modal
+          title={dict.inventory.restockTitle}
+          onClose={closeModal}
+          footer={<>
+            <button
+              onClick={closeModal}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              {dict.inventory.cancel}
+            </button>
+            <button
+              onClick={handleRestock}
+              disabled={saving || restockQty <= 0}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {dict.inventory.addToStock}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-800">{target.name}</div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {dict.inventory.currentStock}: <span className="font-semibold text-slate-700">{target.qty_in_stock} {unitLabel(dict, target.unit)}</span>
             </div>
+          </div>
 
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-800">{target.name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {dict.inventory.currentStock}: <span className="font-semibold text-slate-700">{target.qty_in_stock} {unitLabel(dict, target.unit)}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  {dict.inventory.howMuchToAdd.replace('{unit}', unitLabel(dict, target.unit))}
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRestockQty(q => Math.max(1, q - 1))}
-                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    value={restockQty}
-                    onChange={e => setRestockQty(Math.max(1, Number(e.target.value)))}
-                    className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setRestockQty(q => q + 1)}
-                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
-                {dict.inventory.willBecome}: <span className="font-bold">{target.qty_in_stock + restockQty} {unitLabel(dict, target.unit)}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.inventory.error}: {saveError}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              {dict.inventory.howMuchToAdd.replace('{unit}', unitLabel(dict, target.unit))}
+            </label>
+            <div className="flex items-center gap-3">
               <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                type="button"
+                onClick={() => setRestockQty(q => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
               >
-                {dict.inventory.cancel}
+                −
               </button>
+              <input
+                type="number"
+                min="1"
+                value={restockQty}
+                onChange={e => setRestockQty(Math.max(1, Number(e.target.value)))}
+                className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
               <button
-                onClick={handleRestock}
-                disabled={saving || restockQty <= 0}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                type="button"
+                onClick={() => setRestockQty(q => q + 1)}
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
               >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {dict.inventory.addToStock}
+                +
               </button>
             </div>
           </div>
-        </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
+            {dict.inventory.willBecome}: <span className="font-bold">{target.qty_in_stock + restockQty} {unitLabel(dict, target.unit)}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.inventory.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Issue to team modal */}
       {modal === 'issue' && target && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">{dict.inventory.issueTitle}</h2>
-              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+        <Modal
+          title={dict.inventory.issueTitle}
+          onClose={closeModal}
+          footer={<>
+            <button
+              onClick={closeModal}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              {dict.inventory.cancel}
+            </button>
+            <button
+              onClick={handleIssue}
+              disabled={saving || issueQty <= 0 || issueQty > target.qty_in_stock}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {dict.inventory.issue}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-800">{target.name}</div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              {dict.inventory.currentMainStock}: <span className="font-semibold text-slate-700">{target.qty_in_stock} {unitLabel(dict, target.unit)}</span>
             </div>
+          </div>
 
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-sm font-medium text-slate-800">{target.name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {dict.inventory.currentMainStock}: <span className="font-semibold text-slate-700">{target.qty_in_stock} {unitLabel(dict, target.unit)}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  {dict.inventory.howMuchToIssue.replace('{unit}', unitLabel(dict, target.unit))}
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIssueQty(q => Math.max(1, q - 1))}
-                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    max={target.qty_in_stock}
-                    value={issueQty}
-                    onChange={e => setIssueQty(Math.max(1, Math.min(target.qty_in_stock, Number(e.target.value))))}
-                    className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIssueQty(q => Math.min(target.qty_in_stock, q + 1))}
-                    className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
-                {dict.inventory.mainWillBecome}: <span className="font-bold">{target.qty_in_stock - issueQty} {unitLabel(dict, target.unit)}</span>
-              </div>
-              {saveError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  {dict.inventory.error}: {saveError}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              {dict.inventory.howMuchToIssue.replace('{unit}', unitLabel(dict, target.unit))}
+            </label>
+            <div className="flex items-center gap-3">
               <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                type="button"
+                onClick={() => setIssueQty(q => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
               >
-                {dict.inventory.cancel}
+                −
               </button>
+              <input
+                type="number"
+                min="1"
+                max={target.qty_in_stock}
+                value={issueQty}
+                onChange={e => setIssueQty(Math.max(1, Math.min(target.qty_in_stock, Number(e.target.value))))}
+                className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
               <button
-                onClick={handleIssue}
-                disabled={saving || issueQty <= 0 || issueQty > target.qty_in_stock}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                type="button"
+                onClick={() => setIssueQty(q => Math.min(target.qty_in_stock, q + 1))}
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-xl font-medium"
               >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {dict.inventory.issue}
+                +
               </button>
             </div>
           </div>
-        </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+            {dict.inventory.mainWillBecome}: <span className="font-bold">{target.qty_in_stock - issueQty} {unitLabel(dict, target.unit)}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.inventory.error}: {saveError}
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* Edit / Add modal */}
       {(modal === 'edit' || modal === 'add') && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-900">
-                {modal === 'edit' ? dict.inventory.editTitle : dict.inventory.addTitle}
-              </h2>
-              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
+        <Modal
+          title={modal === 'edit' ? dict.inventory.editTitle : dict.inventory.addTitle}
+          onClose={closeModal}
+          maxWidth="max-w-md"
+          footer={<>
+            <button
+              onClick={closeModal}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              {dict.inventory.cancel}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.name}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {dict.inventory.save}
+            </button>
+          </>}
+        >
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.codeOptional}</label>
@@ -529,26 +513,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                   {dict.inventory.error}: {saveError}
                 </div>
               )}
-            </div>
-
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
-              <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                {dict.inventory.cancel}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !form.name}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {dict.inventory.save}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

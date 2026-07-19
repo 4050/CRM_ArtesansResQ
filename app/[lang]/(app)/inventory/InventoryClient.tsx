@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2 } from 'lucide-react'
+import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2, Ban } from 'lucide-react'
 import {
   createConsumableAction,
   updateConsumableAction,
   restockConsumableAction,
   archiveConsumableAction,
+  deleteConsumableAction,
   transferToTeamStockAction,
 } from './actions'
 import type { Consumable, ConsumableUnit } from '@/types'
@@ -33,7 +34,7 @@ const emptyForm = {
   is_active: true,
 }
 
-type ModalMode = 'edit' | 'add' | 'restock' | 'delete' | 'issue' | null
+type ModalMode = 'edit' | 'add' | 'restock' | 'deactivate' | 'delete' | 'issue' | null
 
 export default function InventoryClient({ lang, dict, consumables: initial, isAdmin }: Props) {
   const [consumables, setConsumables] = useState(initial)
@@ -79,6 +80,11 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
     setTarget(null)
     setForm(emptyForm)
     setModal('add')
+  }
+
+  function openDeactivate(c: Consumable) {
+    setTarget(c)
+    setModal('deactivate')
   }
 
   function openDelete(c: Consumable) {
@@ -144,12 +150,30 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
     closeModal()
   }
 
-  async function handleDelete() {
+  async function handleDeactivate() {
     if (!target) return
     setSaving(true)
     setSaveError('')
 
     const { error } = await archiveConsumableAction(lang, target.id)
+
+    if (error) {
+      setSaveError(error)
+      setSaving(false)
+      return
+    }
+
+    setConsumables(prev => prev.map(c => c.id === target.id ? { ...c, is_active: false } : c))
+    setSaving(false)
+    closeModal()
+  }
+
+  async function handleDelete() {
+    if (!target) return
+    setSaving(true)
+    setSaveError('')
+
+    const { error } = await deleteConsumableAction(lang, target.id)
 
     if (error) {
       setSaveError(error)
@@ -175,10 +199,13 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
           <Edit2 className="w-3.5 h-3.5" />
         </button>
         {item.is_active && (
-          <button onClick={() => openDelete(item)} title={dict.inventory.delete} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
+          <button onClick={() => openDeactivate(item)} title={dict.inventory.deactivate} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+            <Ban className="w-3.5 h-3.5" />
           </button>
         )}
+        <button onClick={() => openDelete(item)} title={dict.inventory.deleteForever} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </>
     )
   }
@@ -196,10 +223,13 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
           <Edit2 className="w-4 h-4" />
         </button>
         {item.is_active && (
-          <button onClick={() => openDelete(item)} className="p-1.5 text-red-600 bg-red-50 rounded-lg">
-            <Trash2 className="w-4 h-4" />
+          <button onClick={() => openDeactivate(item)} className="p-1.5 text-amber-600 bg-amber-50 rounded-lg">
+            <Ban className="w-4 h-4" />
           </button>
         )}
+        <button onClick={() => openDelete(item)} className="p-1.5 text-red-600 bg-red-50 rounded-lg">
+          <Trash2 className="w-4 h-4" />
+        </button>
       </>
     )
   }
@@ -251,7 +281,47 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         renderCardActions={isAdmin ? renderCardActions : undefined}
       />
 
-      {/* Delete confirmation */}
+      {/* Deactivate confirmation */}
+      {modal === 'deactivate' && target && (
+        <Modal
+          title={dict.inventory.deactivateTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.inventory.cancel}
+            </button>
+            <button
+              onClick={handleDeactivate}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              {dict.inventory.makeInactive}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{target.name}</div>
+            <div className="text-xs text-slate-500 mt-1">{dict.inventory.inStockShort}: {target.qty_in_stock} {unitLabel(dict, target.unit)}</div>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.inventory.deactivateWarning}</span>
+          </div>
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.inventory.error}: {saveError}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* Hard delete confirmation */}
       {modal === 'delete' && target && (
         <Modal
           title={dict.inventory.deleteTitle}
@@ -279,7 +349,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
             <div className="text-sm font-medium text-slate-900">{target.name}</div>
             <div className="text-xs text-slate-500 mt-1">{dict.inventory.inStockShort}: {target.qty_in_stock} {unitLabel(dict, target.unit)}</div>
           </div>
-          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{dict.inventory.deleteWarning}</span>
           </div>

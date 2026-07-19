@@ -16,7 +16,8 @@ export default async function TeamStockPage({ params }: { params: Promise<{ lang
   const userId = claimsData?.claims.sub
 
   const profile = await getProfile(userId!)
-  const items = await getTeamStock()
+  const isAdmin = isAdminRole(profile?.role)
+  const items = await getTeamStock({ includeInactive: isAdmin })
 
-  return <TeamStockClient lang={lang} dict={dict} items={items} isAdmin={isAdminRole(profile?.role)} />
+  return <TeamStockClient lang={lang} dict={dict} items={items} isAdmin={isAdmin} />
 }

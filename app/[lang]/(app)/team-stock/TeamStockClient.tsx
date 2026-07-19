@@ -28,6 +28,7 @@ function toStockItem(row: TeamStockRow): TeamStockItem {
     unit: row.consumable?.unit ?? 'pcs',
     qty_in_stock: row.qty_in_stock,
     qty_minimum: row.consumable?.qty_minimum ?? 0,
+    is_active: row.consumable?.is_active,
   }
 }
 
@@ -37,6 +38,9 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
   const [returnQty, setReturnQty] = useState(1)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
+
+  const visibleItems = items.filter(row => row.consumable?.is_active !== false || showInactive)
 
   function openReturn(item: TeamStockItem) {
     setTarget(item)
@@ -90,14 +94,27 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{dict.teamStock.title}</h1>
-        <p className="text-sm text-slate-500 mt-1">{dict.teamStock.subtitle}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{dict.teamStock.title}</h1>
+          <p className="text-sm text-slate-500 mt-1">{dict.teamStock.subtitle}</p>
+        </div>
+        {isAdmin && (
+          <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={e => setShowInactive(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            {dict.teamStock.showInactive}
+          </label>
+        )}
       </div>
 
       <StockTable
         dict={dict}
-        items={items.map(toStockItem)}
+        items={visibleItems.map(toStockItem)}
         labels={{
           searchPlaceholder: dict.teamStock.searchPlaceholder,
           allCategories: dict.teamStock.allCategories,

@@ -36,3 +36,7 @@ export function formatDateTime(dateStr: string, lang: Locale): string {
 export function isLowStock(qty: number, min: number): boolean {
   return qty <= min
 }
+
+export function computeTotalPages(count: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(count / pageSize))
+}

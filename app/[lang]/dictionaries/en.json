@@ -114,8 +114,9 @@
     "stock": "Stock",
     "noneFound": "No movements for the selected period",
     "system": "System",
-    "shownPrefix": "Showing",
-    "shownSuffix": "operations, max 500"
+    "shownRange": "Showing {from}–{to} of {total}",
+    "prevPage": "Previous",
+    "nextPage": "Next"
   },
   "reports": {
     "title": "Reports",

@@ -173,7 +173,11 @@
     "currentMainStock": "Зараз на основному складі",
     "howMuchToIssue": "Скільки видати, {unit}",
     "mainWillBecome": "На основному складі стане",
-    "issue": "Видати"
+    "issue": "Видати",
+    "showInactive": "Показати неактивні",
+    "status": "Статус",
+    "statusActive": "Активна",
+    "statusInactive": "Неактивна"
   },
   "vehicles": {
     "title": "Машини та сумки",

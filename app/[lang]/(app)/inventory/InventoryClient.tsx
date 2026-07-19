@@ -30,6 +30,7 @@ const emptyForm = {
   qty_in_stock: 0,
   qty_minimum: 0,
   description: '',
+  is_active: true,
 }
 
 type ModalMode = 'edit' | 'add' | 'restock' | 'delete' | 'issue' | null
@@ -43,6 +44,9 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   const [issueQty, setIssueQty] = useState(1)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
+
+  const visibleConsumables = consumables.filter(c => c.is_active || showInactive)
 
   function openEdit(c: Consumable) {
     setTarget(c)
@@ -54,6 +58,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
       qty_in_stock: c.qty_in_stock,
       qty_minimum: c.qty_minimum,
       description: c.description ?? '',
+      is_active: c.is_active,
     })
     setModal('edit')
   }
@@ -100,6 +105,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         unit: payload.unit,
         qty_minimum: payload.qty_minimum,
         description: payload.description,
+        is_active: payload.is_active,
       })
 
       if (error) { setSaveError(error); setSaving(false); return }
@@ -159,18 +165,20 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   function renderRowActions(item: Consumable) {
     return (
       <>
-        <button onClick={() => openRestock(item)} title={dict.inventory.restock} className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+        <button onClick={() => openRestock(item)} title={dict.inventory.restock} disabled={!item.is_active} className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors">
           <PackagePlus className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => openIssue(item)} title={dict.inventory.issueToTeam} disabled={item.qty_in_stock <= 0} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors">
+        <button onClick={() => openIssue(item)} title={dict.inventory.issueToTeam} disabled={!item.is_active || item.qty_in_stock <= 0} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors">
           <Send className="w-3.5 h-3.5" />
         </button>
         <button onClick={() => openEdit(item)} title={dict.inventory.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
           <Edit2 className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => openDelete(item)} title={dict.inventory.delete} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        {item.is_active && (
+          <button onClick={() => openDelete(item)} title={dict.inventory.delete} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </>
     )
   }
@@ -178,18 +186,20 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   function renderCardActions(item: Consumable) {
     return (
       <>
-        <button onClick={() => openRestock(item)} className="p-1.5 text-green-600 bg-green-50 rounded-lg">
+        <button onClick={() => openRestock(item)} disabled={!item.is_active} className="p-1.5 text-green-600 bg-green-50 rounded-lg disabled:opacity-30">
           <PackagePlus className="w-4 h-4" />
         </button>
-        <button onClick={() => openIssue(item)} disabled={item.qty_in_stock <= 0} className="p-1.5 text-blue-600 bg-blue-50 rounded-lg disabled:opacity-30">
+        <button onClick={() => openIssue(item)} disabled={!item.is_active || item.qty_in_stock <= 0} className="p-1.5 text-blue-600 bg-blue-50 rounded-lg disabled:opacity-30">
           <Send className="w-4 h-4" />
         </button>
         <button onClick={() => openEdit(item)} className="p-1.5 text-slate-500 bg-slate-100 rounded-lg">
           <Edit2 className="w-4 h-4" />
         </button>
-        <button onClick={() => openDelete(item)} className="p-1.5 text-red-600 bg-red-50 rounded-lg">
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {item.is_active && (
+          <button onClick={() => openDelete(item)} className="p-1.5 text-red-600 bg-red-50 rounded-lg">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </>
     )
   }
@@ -198,20 +208,33 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">{dict.inventory.title}</h1>
-        {isAdmin && (
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {dict.inventory.newItem}
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {isAdmin && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={e => setShowInactive(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              {dict.inventory.showInactive}
+            </label>
+          )}
+          {isAdmin && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {dict.inventory.newItem}
+            </button>
+          )}
+        </div>
       </div>
 
       <StockTable
         dict={dict}
-        items={consumables}
+        items={visibleConsumables}
         labels={{
           searchPlaceholder: dict.inventory.searchPlaceholder,
           allCategories: dict.inventory.allCategories,
@@ -508,6 +531,19 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                   placeholder={dict.inventory.descriptionPlaceholder}
                 />
               </div>
+              {modal === 'edit' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.status}</label>
+                  <select
+                    value={form.is_active ? 'active' : 'inactive'}
+                    onChange={e => setForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                  >
+                    <option value="active">{dict.inventory.statusActive}</option>
+                    <option value="inactive">{dict.inventory.statusInactive}</option>
+                  </select>
+                </div>
+              )}
               {saveError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
                   {dict.inventory.error}: {saveError}

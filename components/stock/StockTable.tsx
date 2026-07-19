@@ -17,6 +17,9 @@ export interface StockItem {
   unit: string
   qty_in_stock: number
   qty_minimum: number
+  // Omit entirely for item kinds with no concept of archiving (e.g. team
+  // stock) — rows only dim when the field is explicitly present and false.
+  is_active?: boolean
 }
 
 export interface StockTableLabels {
@@ -108,7 +111,7 @@ export default function StockTable<T extends StockItem>({
             ) : filtered.map(item => {
               const low = isLowStock(item.qty_in_stock, item.qty_minimum)
               return (
-                <tr key={item.id} className={cn('hover:bg-slate-50 transition-colors', low && 'bg-red-50/50')}>
+                <tr key={item.id} className={cn('hover:bg-slate-50 transition-colors', low && 'bg-red-50/50', item.is_active === false && 'opacity-50')}>
                   <td className="px-5 py-3">
                     {item.code
                       ? <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{item.code}</span>
@@ -142,7 +145,7 @@ export default function StockTable<T extends StockItem>({
           ) : filtered.map(item => {
             const low = isLowStock(item.qty_in_stock, item.qty_minimum)
             return (
-              <div key={item.id} className={cn('flex items-center gap-3 px-4 py-3', low && 'bg-red-50/50')}>
+              <div key={item.id} className={cn('flex items-center gap-3 px-4 py-3', low && 'bg-red-50/50', item.is_active === false && 'opacity-50')}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-slate-900 truncate">{item.name}</span>

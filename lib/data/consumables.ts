@@ -17,6 +17,16 @@ export async function getActiveConsumables(): Promise<Consumable[]> {
   return data ?? []
 }
 
+export async function getAllConsumables(): Promise<Consumable[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('consumables')
+    .select('*')
+    .order('category')
+    .order('name')
+  return data ?? []
+}
+
 export async function getStockLevels() {
   const supabase = await createClient()
   const { data } = await supabase

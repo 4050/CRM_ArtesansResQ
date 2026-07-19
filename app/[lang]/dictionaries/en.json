@@ -173,7 +173,11 @@
     "currentMainStock": "Currently in main warehouse",
     "howMuchToIssue": "How much to issue, {unit}",
     "mainWillBecome": "Main warehouse will become",
-    "issue": "Issue"
+    "issue": "Issue",
+    "showInactive": "Show inactive",
+    "status": "Status",
+    "statusActive": "Active",
+    "statusInactive": "Inactive"
   },
   "vehicles": {
     "title": "Vehicles & bags",

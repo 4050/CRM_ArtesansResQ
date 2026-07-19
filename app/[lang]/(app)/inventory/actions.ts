@@ -12,6 +12,7 @@ export interface ConsumableFormInput {
   unit: ConsumableUnit
   qty_minimum: number
   description: string
+  is_active: boolean
 }
 
 export interface NewConsumableInput extends ConsumableFormInput {

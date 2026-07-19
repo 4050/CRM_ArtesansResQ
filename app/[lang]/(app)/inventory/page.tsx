@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getActiveConsumables } from '@/lib/data/consumables'
+import { getAllConsumables } from '@/lib/data/consumables'
 import { getProfile } from '@/lib/data/users'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
@@ -19,7 +19,7 @@ export default async function InventoryPage({ params }: { params: Promise<{ lang
   const profile = await getProfile(userId!)
   if (!isAdminRole(profile?.role)) redirect(`/${lang}/dashboard`)
 
-  const consumables = await getActiveConsumables()
+  const consumables = await getAllConsumables()
 
   return <InventoryClient lang={lang} dict={dict} consumables={consumables} isAdmin={isAdminRole(profile?.role)} />
 }

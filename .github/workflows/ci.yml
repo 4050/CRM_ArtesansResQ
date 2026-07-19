@@ -38,3 +38,34 @@ jobs:
 
       - name: Check schema.sql / migrations are in sync
         run: npm run check:schema
+
+  pgtap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Official PGDG install method (postgresql.org/download/linux/ubuntu)
+      # - pulls in a Postgres 16 + pgTAP combo newer than what Ubuntu's own
+      # archive ships, matching what a real Supabase project runs on.
+      - name: Install PostgreSQL 16 and pgTAP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-16-pgtap
+          sudo service postgresql start
+
+      - name: Apply schema and fixtures
+        run: |
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -f supabase/tests/00_auth_shim.sql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -f supabase/tests/01_fixtures.sql
+
+      - name: Run pgTAP tests
+        run: |
+          for f in supabase/tests/*.test.sql; do
+            echo "::group::$f"
+            sudo -u postgres psql -v ON_ERROR_STOP=1 -f "$f"
+            echo "::endgroup::"
+          done

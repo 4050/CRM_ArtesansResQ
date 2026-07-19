@@ -85,11 +85,23 @@ npm run build
 npm run check:schema
 ```
 
-`npm run test` (Vitest) covers pure app-layer logic: date/locale formatting, low-stock thresholds, role checks, unit/category label lookups, and a parity check that `en.json`/`uk.json` expose exactly the same set of keys. It does not cover the SQL RPCs in `supabase/schema.sql` — there's no local Postgres/Supabase CLI in this setup to run those against, so that logic is still only verified by manual testing after applying a migration.
+`npm run test` (Vitest) covers pure app-layer logic: date/locale formatting, low-stock thresholds, role checks, unit/category label lookups, and a parity check that `en.json`/`uk.json` expose exactly the same set of keys.
+
+### Testing the SQL RPCs (pgTAP)
+
+`supabase/tests/*.sql` are [pgTAP](https://pgtap.org/) tests covering the RPCs in `supabase/schema.sql` (role checks, `set_user_role`'s guardrails, stock adjustment, archiving, issuing to the team). They run against a real, throwaway PostgreSQL instance — a plain `postgres:16` won't work as-is, because `schema.sql` depends on `auth.users`/`auth.uid()`, which are provided by the Supabase platform, not vanilla Postgres.
+
+Files run in this order:
+1. `00_auth_shim.sql` — a minimal stand-in for `auth.users`/`auth.uid()` (reads the same `request.jwt.claim.sub` GUC the real Supabase `auth.uid()` reads, so `tests.authenticate_as(user_id)` simulates "logged in as this user" faithfully). Must run **before** `schema.sql`, since `schema.sql` references `auth.users` as an FK target and trigger source.
+2. `supabase/schema.sql` itself.
+3. `01_fixtures.sql` — shared test organizations/users, committed so they persist across test files.
+4. `*.test.sql` — the actual pgTAP suites, each wrapped in `begin; ... rollback;` so mutations never leak between files.
+
+To run these locally you need PostgreSQL + the pgTAP extension installed (see `.github/workflows/ci.yml`'s `pgtap` job for the exact install steps on Ubuntu); there's no Docker/Supabase CLI in this project's usual dev setup, so this suite is primarily meant to run in CI. Coverage is intentionally partial — it does not yet include the call/write-off RPCs, the two-warehouse return/discard flow, or vehicle/bag archiving.
 
 `npm run check:schema` (`scripts/check-schema-sync.mjs`) diffs `supabase/schema.sql` against the latest state of every function/policy/trigger/column across `supabase/migrations/*.sql` — both files are maintained by hand in parallel, and this check catches the moment they drift apart. Run it after any change under `supabase/`, including after every new migration.
 
-All of these also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo.
+All of these also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo. The `pgtap` job in that same workflow provisions its own throwaway PostgreSQL + pgTAP install and runs the SQL test suite described above.
 
 The UI is available in English (`/en/...`) and Ukrainian (`/uk/...`) — the language is detected automatically (`Accept-Language`) or chosen via the switcher in the sidebar and remembered in a cookie. There is no Russian localization.
 

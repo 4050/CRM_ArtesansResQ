@@ -20,3 +20,10 @@ update public.users set role = 'admin' where id in (
   'bbbbbbbb-0000-0000-0000-000000000002',
   'bbbbbbbb-0000-0000-0000-000000000004'
 );
+
+-- A vehicle + matching bag in org A, used by the calls/write-offs and
+-- vehicle/bag archiving test suites.
+insert into public.vehicles (id, number, name, organization_id) values
+  ('dddddddd-0000-0000-0000-000000000001', 'V-01', 'Test Vehicle', 'aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.bags (id, number, vehicle_id, organization_id) values
+  ('eeeeeeee-0000-0000-0000-000000000001', 'B-01', 'dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001');

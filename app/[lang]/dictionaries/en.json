@@ -325,7 +325,12 @@
     "return": "Return",
     "error": "Error",
     "cancel": "Cancel",
-    "showInactive": "Show inactive"
+    "showInactive": "Show inactive",
+    "discardToWaste": "Discard (lost/damaged)",
+    "discardTitle": "Discard from team stock",
+    "discardWarning": "This quantity is written off as lost, damaged, or expired — it will not be returned to the main warehouse.",
+    "howMuchToDiscard": "How much to discard, {unit}",
+    "discard": "Discard"
   },
   "users": {
     "title": "Users",

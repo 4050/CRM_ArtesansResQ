@@ -513,6 +513,36 @@ $$;
 revoke all on function public.return_from_team_stock(uuid, integer) from public;
 grant execute on function public.return_from_team_stock(uuid, integer) to authenticated;
 
+-- Списание со склада команды без возврата на основной (утрачено/повреждено/
+-- просрочено у команды) — в отличие от return_from_team_stock, основной
+-- склад не трогается. Логируется автоматически тем же триггером
+-- log_team_stock_movement, что и любое изменение team_stock.qty_in_stock.
+create or replace function public.discard_from_team_stock(p_consumable_id uuid, p_quantity integer)
+returns public.team_stock
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only an administrator can discard stock from the team';
+  end if;
+  if p_quantity <= 0 then
+    raise exception 'Discard quantity must be greater than zero';
+  end if;
+  if not exists (
+    select 1 from public.consumables
+    where id = p_consumable_id and organization_id = public.current_org_id()
+  ) then
+    raise exception 'Item not found';
+  end if;
+
+  return public.adjust_team_stock(p_consumable_id, -p_quantity);
+end;
+$$;
+
+revoke all on function public.discard_from_team_stock(uuid, integer) from public;
+grant execute on function public.discard_from_team_stock(uuid, integer) to authenticated;
+
 -- adjust_stock не выдан authenticated напрямую — вызывается только из функций
 -- ниже, каждая из которых уже проверила принадлежность организации.
 create or replace function public.restock_consumable(p_consumable_id uuid, p_quantity integer)

@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types'
 
@@ -25,7 +26,7 @@ export async function getOrgMembers(): Promise<OrgMember[]> {
   return data ?? []
 }
 
-export async function getProfile(userId: string): Promise<Profile | null> {
+export const getProfile = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient()
   const { data } = await supabase
     .from('users')
@@ -33,4 +34,4 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     .eq('id', userId)
     .single()
   return data
-}
+})

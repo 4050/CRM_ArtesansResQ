@@ -80,13 +80,16 @@ Then seed its `vehicles`/`bags`/`consumables` with that `organization_id` and in
 ```bash
 npm run lint
 npx tsc --noEmit
+npm run test
 npm run build
 npm run check:schema
 ```
 
+`npm run test` (Vitest) covers pure app-layer logic: date/locale formatting, low-stock thresholds, role checks, unit/category label lookups, and a parity check that `en.json`/`uk.json` expose exactly the same set of keys. It does not cover the SQL RPCs in `supabase/schema.sql` — there's no local Postgres/Supabase CLI in this setup to run those against, so that logic is still only verified by manual testing after applying a migration.
+
 `npm run check:schema` (`scripts/check-schema-sync.mjs`) diffs `supabase/schema.sql` against the latest state of every function/policy/trigger/column across `supabase/migrations/*.sql` — both files are maintained by hand in parallel, and this check catches the moment they drift apart. Run it after any change under `supabase/`, including after every new migration.
 
-All four checks also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo.
+All of these also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo.
 
 The UI is available in English (`/en/...`) and Ukrainian (`/uk/...`) — the language is detected automatically (`Accept-Language`) or chosen via the switcher in the sidebar and remembered in a cookie. There is no Russian localization.
 

@@ -479,6 +479,40 @@ $$;
 revoke all on function public.transfer_to_team_stock(uuid, integer) from public;
 grant execute on function public.transfer_to_team_stock(uuid, integer) to authenticated;
 
+-- Возврат ошибочной выдачи: списывает с команды (проверка достаточного
+-- остатка внутри adjust_team_stock) и возвращает на основной склад. Не
+-- требует is_active — позицию могли архивировать уже после выдачи, но
+-- исправить ошибочную выдачу нужно в любом случае.
+create or replace function public.return_from_team_stock(p_consumable_id uuid, p_quantity integer)
+returns public.team_stock
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  updated public.team_stock;
+begin
+  if not public.is_admin() then
+    raise exception 'Only an administrator can return stock from the team';
+  end if;
+  if p_quantity <= 0 then
+    raise exception 'Return quantity must be greater than zero';
+  end if;
+  if not exists (
+    select 1 from public.consumables
+    where id = p_consumable_id and organization_id = public.current_org_id()
+  ) then
+    raise exception 'Item not found';
+  end if;
+
+  updated := public.adjust_team_stock(p_consumable_id, -p_quantity);
+  perform public.adjust_stock(p_consumable_id, p_quantity);
+  return updated;
+end;
+$$;
+
+revoke all on function public.return_from_team_stock(uuid, integer) from public;
+grant execute on function public.return_from_team_stock(uuid, integer) to authenticated;
+
 -- adjust_stock не выдан authenticated напрямую — вызывается только из функций
 -- ниже, каждая из которых уже проверила принадлежность организации.
 create or replace function public.restock_consumable(p_consumable_id uuid, p_quantity integer)

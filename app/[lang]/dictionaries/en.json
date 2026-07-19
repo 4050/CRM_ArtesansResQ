@@ -316,7 +316,15 @@
     "unit": "Unit",
     "stock": "In stock",
     "minimum": "Minimum",
-    "noneFound": "Nothing has been issued to the team yet"
+    "noneFound": "Nothing has been issued to the team yet",
+    "returnToMain": "Return to main warehouse",
+    "returnTitle": "Return to main warehouse",
+    "currentTeamStock": "Currently in team stock",
+    "howMuchToReturn": "How much to return, {unit}",
+    "teamWillBecome": "Team stock will become",
+    "return": "Return",
+    "error": "Error",
+    "cancel": "Cancel"
   },
   "users": {
     "title": "Users",

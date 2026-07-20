@@ -1,11 +1,8 @@
 import { BarChart3, CalendarDays, Package, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import { getWriteoffsInRange } from '@/lib/data/writeoffs'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { getProfile } from '@/lib/data/users'
-import { isAdminRole } from '@/lib/roles'
-import { getDictionary, hasLocale } from '../../dictionaries'
-import { notFound, redirect } from 'next/navigation'
+import { getDictionary, hasLocale } from '../../../dictionaries'
+import { notFound } from 'next/navigation'
 
 function toDateInput(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -21,12 +18,6 @@ export default async function ReportsPage({
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
-
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-  const profile = await getProfile(userId!)
-  if (!isAdminRole(profile?.role)) redirect(`/${lang}/dashboard`)
 
   const sp = await searchParams
   const now = new Date()

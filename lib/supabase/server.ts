@@ -1,7 +1,12 @@
+import { cache } from 'react'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createClient() {
+// Every page/layout/lib-data function calls this independently - cache()
+// dedupes those into a single client (and a single cookies() read) per
+// request, the same treatment already given to lib/data/users.ts's
+// getProfile().
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -24,4 +29,4 @@ export async function createClient() {
       },
     }
   )
-}
+})

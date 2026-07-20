@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedStock
 
-## Getting Started
+A CRM for tracking medical consumables: calls, write-offs, stock levels, and reports.
 
-First, run the development server:
+## Stack
+
+- Next.js 16, React 19, TypeScript
+- Tailwind CSS 4
+- Supabase Auth and PostgreSQL with RLS
+
+## Running locally
+
+Requires a supported Node.js LTS version (20.19+, 22.13+, or 24+) and a Supabase project.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create `.env.local`:
 
-## Learn More
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For a new project, run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL Editor. The schema creates the tables, RLS policies, and transactional RPCs for call operations — reference data (vehicles, bags, consumables) needs to be seeded separately afterward.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Roles
 
-## Deploy on Vercel
+Three access tiers: `master_admin`, `admin`, `medic`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **master_admin** — everything an admin can do, plus managing the roles of other organization members on the `/{lang}/users` page.
+- **admin** — manages the main warehouse (`/inventory`), vehicles/bags (`/vehicles`), the movement log (`/movements`), reports (`/reports`), and can edit any call.
+- **medic** — sees only the dashboard, calls, write-offs (`/writeoffs`), and team stock (`/team-stock`); can create and edit their own calls.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The first user is created with the `medic` role. The very first `master_admin` in an organization is assigned by hand via the SQL Editor:
+
+```sql
+update public.users set role = 'master_admin' where id = '<user-id>';
+```
+
+Every subsequent role change (between `admin` and `medic`) is done by a master_admin directly in the app, on the `/{lang}/users` page — the SQL Editor is no longer needed for that. A second `master_admin` can only be assigned the same way as the first, via the SQL Editor — this is intentionally not exposed in the app (one master_admin per organization).
+
+### Multi-tenancy
+
+All data (vehicles, bags, stock, calls, write-offs, movement log) belongs to an organization (`organizations`) and is isolated between organizations via RLS. On first run, `schema.sql` creates one organization with a fixed id of `11111111-1111-1111-1111-111111111111` and seeds test data into it.
+
+**Creating a user now requires `organization_id`** in `raw_user_meta_data` — without it, `handle_new_user()` will roll back the transaction. When inviting via the Supabase Dashboard (Authentication → Add user), fill in the "User Metadata" field:
+
+```json
+{ "organization_id": "11111111-1111-1111-1111-111111111111", "name": "Jane Doe" }
+```
+
+Or via the Admin API:
+
+```ts
+await supabase.auth.admin.inviteUserByEmail(email, {
+  data: { organization_id: '11111111-1111-1111-1111-111111111111', name: 'Jane Doe' },
+})
+```
+
+**Onboarding a new organization** — manually, via the SQL Editor:
+
+```sql
+insert into public.organizations (name) values ('Station name') returning id;
+-- use the returned id for vehicles/bags/consumables and for inviting users
+```
+
+Then seed its `vehicles`/`bags`/`consumables` with that `organization_id` and invite users with the same id in their metadata.
+
+## Checks
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run test
+npm run build
+npm run check:schema
+```
+
+`npm run test` (Vitest) covers pure app-layer logic: date/locale formatting, low-stock thresholds, role checks, unit/category label lookups, and a parity check that `en.json`/`uk.json` expose exactly the same set of keys.
+
+### Testing the SQL RPCs (pgTAP)
+
+`supabase/tests/*.sql` are [pgTAP](https://pgtap.org/) tests covering the RPCs in `supabase/schema.sql` (role checks, `set_user_role`'s guardrails, stock adjustment, archiving, issuing to the team). They run against a real, throwaway PostgreSQL instance — a plain `postgres:16` won't work as-is, because `schema.sql` depends on `auth.users`/`auth.uid()`, which are provided by the Supabase platform, not vanilla Postgres.
+
+Files run in this order:
+1. `00_auth_shim.sql` — a minimal stand-in for `auth.users`/`auth.uid()` (reads the same `request.jwt.claim.sub` GUC the real Supabase `auth.uid()` reads, so `tests.authenticate_as(user_id)` simulates "logged in as this user" faithfully). Must run **before** `schema.sql`, since `schema.sql` references `auth.users` as an FK target and trigger source.
+2. `supabase/schema.sql` itself.
+3. `01_fixtures.sql` — shared test organizations/users, committed so they persist across test files.
+4. `*.test.sql` — the actual pgTAP suites, each wrapped in `begin; ... rollback;` so mutations never leak between files.
+
+To run these locally you need PostgreSQL + the pgTAP extension installed (see `.github/workflows/ci.yml`'s `pgtap` job for the exact install steps on Ubuntu); there's no Docker/Supabase CLI in this project's usual dev setup, so this suite is primarily meant to run in CI. Also covers `create_call_with_writeoffs`/`update_call_with_writeoffs`/`delete_call_with_writeoffs` (ownership checks, team-stock side effects), vehicle/bag archiving and hard-delete (including the foreign_key_violation-to-friendly-message path), and org-scoping as its own dedicated test rather than only incidentally exercised elsewhere. Not yet covered: the two-warehouse return/discard flow (`return_from_team_stock`/`discard_from_team_stock` — not merged into this branch yet).
+
+`npm run check:schema` (`scripts/check-schema-sync.mjs`) diffs `supabase/schema.sql` against the latest state of every function/policy/trigger/column across `supabase/migrations/*.sql` — both files are maintained by hand in parallel, and this check catches the moment they drift apart. Run it after any change under `supabase/`, including after every new migration.
+
+All of these also run automatically in CI (`.github/workflows/ci.yml`) on every pull request and on push to `main`, using placeholder Supabase env vars — the build never makes real network calls, so no secrets need to be configured in the repo. The `pgtap` job in that same workflow provisions its own throwaway PostgreSQL + pgTAP install and runs the SQL test suite described above.
+
+The UI is available in English (`/en/...`) and Ukrainian (`/uk/...`) — the language is detected automatically (`Accept-Language`) or chosen via the switcher in the sidebar and remembered in a cookie. There is no Russian localization.
+
+Main routes: `/{lang}/dashboard`, `/{lang}/calls`, `/{lang}/writeoffs`, `/{lang}/team-stock`, `/{lang}/inventory`, `/{lang}/vehicles`, `/{lang}/movements`, `/{lang}/reports`, `/{lang}/users`.
+
+The `/{lang}/movements` screen shows an automatically generated log of all stock changes. For an existing database, apply the SQL files under `supabase/migrations` in sequence.

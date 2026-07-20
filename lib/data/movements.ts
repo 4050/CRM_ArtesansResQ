@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { StockMovementType } from '@/types'
 
@@ -16,19 +17,26 @@ export interface MovementListFilters {
   pageSize?: number
 }
 
-export interface MovementRow {
-  id: string
-  consumable_id: string
-  movement_type: StockMovementType
-  quantity_delta: number
-  quantity_before: number
-  quantity_after: number
-  user_id: string | null
-  created_at: string
-  warehouse: Warehouse
-  consumable: { name: string; unit: string; category: string } | null
-  user: { name: string } | null
-}
+// Supabase's nested-relation `select()` results aren't typed against a
+// generated schema in this project (no `supabase gen types` step), so the
+// query below returns effectively untyped data - this schema is the actual
+// boundary check, not just a type annotation. A shape mismatch throws a
+// clear ZodError instead of silently trusting an `as unknown as` cast.
+const movementRowSchema = z.object({
+  id: z.string(),
+  consumable_id: z.string(),
+  movement_type: z.enum(['opening_balance', 'increase', 'decrease']),
+  quantity_delta: z.number(),
+  quantity_before: z.number(),
+  quantity_after: z.number(),
+  user_id: z.string().nullable(),
+  created_at: z.string(),
+  warehouse: z.enum(['main', 'team']),
+  consumable: z.object({ name: z.string(), unit: z.string(), category: z.string() }).nullable(),
+  user: z.object({ name: z.string() }).nullable(),
+})
+
+export type MovementRow = z.infer<typeof movementRowSchema>
 
 export interface MovementPage {
   rows: MovementRow[]
@@ -64,7 +72,7 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
 
   const { data, count } = await query
   return {
-    rows: (data ?? []) as unknown as MovementRow[],
+    rows: z.array(movementRowSchema).parse(data ?? []),
     count: count ?? 0,
     page,
     pageSize,

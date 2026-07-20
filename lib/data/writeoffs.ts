@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
 export interface WriteoffListFilters {
@@ -5,27 +6,36 @@ export interface WriteoffListFilters {
   userId?: string
 }
 
-export interface WriteoffRow {
-  id: string
-  call_id: string | null
-  consumable_id: string
-  quantity: number
-  created_at: string
-  consumable: { name: string; unit: string; category: string } | null
-  user: { name: string } | null
-  call: {
-    call_number: string | null
-    date: string
-    vehicle: { number: string } | null
-    bag: { number: string } | null
-  } | null
-}
+// Runtime boundary check - see the comment in lib/data/movements.ts for why
+// this is more than a type annotation (no generated Supabase types here).
+const consumableSummarySchema = z.object({ name: z.string(), unit: z.string(), category: z.string() }).nullable()
+const userSummarySchema = z.object({ name: z.string() }).nullable()
 
-export interface WriteoffSummaryRow {
-  quantity: number
-  consumable: { name: string; unit: string; category: string } | null
-  user: { name: string } | null
-}
+const writeoffRowSchema = z.object({
+  id: z.string(),
+  call_id: z.string().nullable(),
+  consumable_id: z.string(),
+  quantity: z.number(),
+  created_at: z.string(),
+  consumable: consumableSummarySchema,
+  user: userSummarySchema,
+  call: z.object({
+    call_number: z.string().nullable(),
+    date: z.string(),
+    vehicle: z.object({ number: z.string() }).nullable(),
+    bag: z.object({ number: z.string() }).nullable(),
+  }).nullable(),
+})
+
+export type WriteoffRow = z.infer<typeof writeoffRowSchema>
+
+const writeoffSummaryRowSchema = z.object({
+  quantity: z.number(),
+  consumable: consumableSummarySchema,
+  user: userSummarySchema,
+})
+
+export type WriteoffSummaryRow = z.infer<typeof writeoffSummaryRowSchema>
 
 export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<WriteoffRow[]> {
   const supabase = await createClient()
@@ -44,7 +54,7 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
   if (filters.userId) query = query.eq('user_id', filters.userId)
 
   const { data } = await query
-  return (data ?? []) as unknown as WriteoffRow[]
+  return z.array(writeoffRowSchema).parse(data ?? [])
 }
 
 export async function getWriteoffsSince(isoDate: string): Promise<{ quantity: number }[]> {
@@ -65,5 +75,5 @@ export async function getWriteoffsInRange(fromIso: string, toIso: string): Promi
     .lte('created_at', toIso)
     .order('created_at', { ascending: false })
     .limit(5000)
-  return (data ?? []) as unknown as WriteoffSummaryRow[]
+  return z.array(writeoffSummaryRowSchema).parse(data ?? [])
 }

@@ -3,6 +3,8 @@ import type { StockMovementType } from '@/types'
 
 export type Warehouse = 'main' | 'team'
 
+const DEFAULT_PAGE_SIZE = 500
+
 export interface MovementListFilters {
   consumableId?: string
   userId?: string
@@ -10,6 +12,8 @@ export interface MovementListFilters {
   warehouse?: Warehouse
   fromIso?: string
   toIso?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface MovementRow {
@@ -26,8 +30,20 @@ export interface MovementRow {
   user: { name: string } | null
 }
 
-export async function getStockMovements(filters: MovementListFilters = {}): Promise<MovementRow[]> {
+export interface MovementPage {
+  rows: MovementRow[]
+  count: number
+  page: number
+  pageSize: number
+}
+
+export async function getStockMovements(filters: MovementListFilters = {}): Promise<MovementPage> {
   const supabase = await createClient()
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   let query = supabase
     .from('stock_movements')
     .select(`
@@ -35,9 +51,9 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
       quantity_before, quantity_after, user_id, created_at, warehouse,
       consumable:consumables(name, unit, category),
       user:users(name)
-    `)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(500)
+    .range(from, to)
 
   if (filters.consumableId) query = query.eq('consumable_id', filters.consumableId)
   if (filters.userId) query = query.eq('user_id', filters.userId)
@@ -46,6 +62,11 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
   if (filters.fromIso) query = query.gte('created_at', filters.fromIso)
   if (filters.toIso) query = query.lte('created_at', filters.toIso)
 
-  const { data } = await query
-  return (data ?? []) as unknown as MovementRow[]
+  const { data, count } = await query
+  return {
+    rows: (data ?? []) as unknown as MovementRow[],
+    count: count ?? 0,
+    page,
+    pageSize,
+  }
 }

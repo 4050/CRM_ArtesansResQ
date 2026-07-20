@@ -114,8 +114,9 @@
     "stock": "Залишок",
     "noneFound": "Рухів за обраний період немає",
     "system": "Система",
-    "shownPrefix": "Показано",
-    "shownSuffix": "операцій, максимум 500"
+    "shownRange": "Показано {from}–{to} з {total}",
+    "prevPage": "Попередня",
+    "nextPage": "Наступна"
   },
   "reports": {
     "title": "Звіти",

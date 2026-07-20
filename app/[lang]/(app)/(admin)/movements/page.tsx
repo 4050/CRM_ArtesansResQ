@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, History } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History } from 'lucide-react'
+import { formatDateTime, computeTotalPages } from '@/lib/utils'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
@@ -12,19 +12,37 @@ function validDate(value?: string) {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined
 }
 
+type MovementSearchParams = {
+  consumable?: string
+  user?: string
+  type?: StockMovementType
+  warehouse?: Warehouse
+  from?: string
+  to?: string
+  page?: string
+}
+
+// Preserves every active filter while only changing the page number -
+// used by the prev/next links below.
+function pageHref(lang: string, sp: MovementSearchParams, page: number) {
+  const params = new URLSearchParams()
+  if (sp.consumable) params.set('consumable', sp.consumable)
+  if (sp.user) params.set('user', sp.user)
+  if (sp.type) params.set('type', sp.type)
+  if (sp.warehouse) params.set('warehouse', sp.warehouse)
+  if (sp.from) params.set('from', sp.from)
+  if (sp.to) params.set('to', sp.to)
+  if (page > 1) params.set('page', String(page))
+  const qs = params.toString()
+  return `/${lang}/movements${qs ? `?${qs}` : ''}`
+}
+
 export default async function MovementsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>
-  searchParams: Promise<{
-    consumable?: string
-    user?: string
-    type?: StockMovementType
-    warehouse?: Warehouse
-    from?: string
-    to?: string
-  }>
+  searchParams: Promise<MovementSearchParams>
 }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
@@ -43,8 +61,9 @@ export default async function MovementsPage({
   const sp = await searchParams
   const from = validDate(sp.from)
   const to = validDate(sp.to)
+  const page = Math.max(1, Number(sp.page) || 1)
 
-  const [movements, consumables, users] = await Promise.all([
+  const [{ rows: movements, count, pageSize }, consumables, users] = await Promise.all([
     getStockMovements({
       consumableId: sp.consumable,
       userId: sp.user,
@@ -52,10 +71,15 @@ export default async function MovementsPage({
       warehouse: sp.warehouse === 'main' || sp.warehouse === 'team' ? sp.warehouse : undefined,
       fromIso: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
       toIso: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
+      page,
     }),
     getConsumableNameOptions(),
     getUserOptions(),
   ])
+
+  const totalPages = computeTotalPages(count, pageSize)
+  const rangeFrom = count === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeTo = Math.min(count, page * pageSize)
 
   const totalIncrease = movements.reduce((sum, item) => sum + Math.max(0, item.quantity_delta), 0)
   const totalDecrease = movements.reduce((sum, item) => sum + Math.abs(Math.min(0, item.quantity_delta)), 0)
@@ -167,7 +191,40 @@ export default async function MovementsPage({
             ))}</div>
           </>
         )}
-        <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">{dict.movements.shownPrefix} {movements.length} {dict.movements.shownSuffix}</div>
+        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-400">
+            {dict.movements.shownRange
+              .replace('{from}', String(rangeFrom))
+              .replace('{to}', String(rangeTo))
+              .replace('{total}', String(count))}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              {page > 1 ? (
+                <a href={pageHref(lang, sp, page - 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.movements.prevPage}
+                </a>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.movements.prevPage}
+                </span>
+              )}
+              {page < totalPages ? (
+                <a href={pageHref(lang, sp, page + 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  {dict.movements.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </a>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  {dict.movements.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

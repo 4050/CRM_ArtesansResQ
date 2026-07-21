@@ -12,7 +12,6 @@ export interface NewVehicleInput {
 
 export interface NewBagInput {
   number: string
-  vehicle_id: string
   description: string | null
 }
 
@@ -24,7 +23,6 @@ export interface VehicleFormInput {
 
 export interface BagFormInput {
   number: string
-  vehicle_id: string
   description: string | null
   is_active: boolean
 }

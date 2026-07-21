@@ -20,10 +20,8 @@ export interface Vehicle {
 export interface Bag {
   id: string
   number: string
-  vehicle_id: string
   description: string | null
   is_active: boolean
-  vehicle?: Vehicle
 }
 
 export type ConsumableUnit = 'pcs' | 'pair' | 'ml' | 'l' | 'g' | 'kg' | 'pack' | 'vial' | 'amp'

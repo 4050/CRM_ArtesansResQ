@@ -3,13 +3,13 @@
 --   medic_a    = bbbbbbbb-...-0003 (org A)
 --   admin_b    = bbbbbbbb-...-0004 (org B - used for cross-org/non-owner checks)
 --   vehicle_a1 = dddddddd-...-0001 (org A)
---   bag_a1     = eeeeeeee-...-0001 (org A, belongs to vehicle_a1)
+--   bag_a1     = eeeeeeee-...-0001 (org A, independent of any vehicle)
 --
 -- The test call is found by its fixed, never-renamed description
 -- ('pgtap-marker-call-1') rather than a captured id, so no psql variable
 -- capture (\gset) is needed - keeps this file plain, portable SQL.
 begin;
-select plan(13);
+select plan(14);
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
 
@@ -25,8 +25,18 @@ select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000003');
 
 select throws_like(
   $$ select public.create_call_with_writeoffs(now(), 'bad bag', 'dddddddd-0000-0000-0000-000000000001'::uuid, 'eeeeeeee-0000-0000-0000-000000000099'::uuid, '[]'::jsonb) $$,
-  'Bag does not belong to the selected vehicle',
-  'creating a call with a mismatched bag is rejected'
+  'Bag not found',
+  'creating a call with a non-existent bag is rejected'
+);
+
+-- bags and vehicles are decoupled: a bag has no vehicle_id at all now, so
+-- pairing it with any vehicle - not just one it was ever "assigned" to -
+-- must succeed.
+insert into public.vehicles (id, number, organization_id) values
+  ('dddddddd-0000-0000-0000-000000000098', 'V-98', 'aaaaaaaa-0000-0000-0000-000000000001');
+select lives_ok(
+  $$ select public.create_call_with_writeoffs(now(), 'pgtap-marker-decoupled', 'dddddddd-0000-0000-0000-000000000098'::uuid, 'eeeeeeee-0000-0000-0000-000000000001'::uuid, '[]'::jsonb) $$,
+  'a bag can be paired with any vehicle now that they are decoupled'
 );
 
 select throws_like(

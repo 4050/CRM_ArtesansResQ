@@ -38,7 +38,6 @@ create table public.vehicles (
 create table public.bags (
   id uuid default gen_random_uuid() primary key,
   number text not null,
-  vehicle_id uuid references public.vehicles(id),
   description text,
   is_active boolean not null default true,
   organization_id uuid not null references public.organizations(id),
@@ -685,7 +684,7 @@ begin
   end if;
 exception
   when foreign_key_violation then
-    raise exception 'Cannot delete vehicle: bags or calls still reference it. Deactivate it first.';
+    raise exception 'Cannot delete vehicle: calls still reference it. Deactivate it first.';
 end;
 $$;
 
@@ -788,9 +787,9 @@ begin
 
   if not exists (
     select 1 from public.bags
-    where id = p_bag_id and vehicle_id = p_vehicle_id and organization_id = v_org_id
+    where id = p_bag_id and organization_id = v_org_id
   ) then
-    raise exception 'Bag does not belong to the selected vehicle';
+    raise exception 'Bag not found';
   end if;
 
   insert into public.calls (date, description, vehicle_id, bag_id, user_id, organization_id)
@@ -857,9 +856,9 @@ begin
 
   if not exists (
     select 1 from public.bags
-    where id = p_bag_id and vehicle_id = p_vehicle_id and organization_id = v_org_id
+    where id = p_bag_id and organization_id = v_org_id
   ) then
-    raise exception 'Bag does not belong to the selected vehicle';
+    raise exception 'Bag not found';
   end if;
 
   for item in

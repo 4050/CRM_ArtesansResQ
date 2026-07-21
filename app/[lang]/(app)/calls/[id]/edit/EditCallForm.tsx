@@ -50,7 +50,6 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const filteredBags = vehicleId ? bags.filter(b => b.vehicle_id === vehicleId) : bags
   const usedIds = writeoffs.map(w => w.consumable_id)
 
   function getConsumable(id: string) {
@@ -138,7 +137,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.calls.form.vehicle} <span className="text-red-500">*</span></label>
-              <select value={vehicleId} onChange={e => { setVehicleId(e.target.value); setBagId('') }}
+              <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}
                 className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
                 <option value="">{dict.calls.form.selectVehicle}</option>
                 {vehicles.map(v => <option key={v.id} value={v.id}>{v.number}{v.name ? ` — ${v.name}` : ''}</option>)}
@@ -149,7 +148,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
               <select value={bagId} onChange={e => setBagId(e.target.value)}
                 className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
                 <option value="">{dict.calls.form.selectBag}</option>
-                {filteredBags.map(b => <option key={b.id} value={b.id}>{b.number}{b.description ? ` — ${b.description}` : ''}</option>)}
+                {bags.map(b => <option key={b.id} value={b.id}>{b.number}{b.description ? ` — ${b.description}` : ''}</option>)}
               </select>
             </div>
           </div>

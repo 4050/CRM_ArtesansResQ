@@ -17,7 +17,7 @@ import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 
-type BagRow = Bag & { vehicle?: { number: string } }
+type BagRow = Bag
 
 interface Props {
   lang: Locale
@@ -33,7 +33,7 @@ type ModalMode =
   | null
 
 const emptyVehicleForm = { number: '', name: '', is_active: true }
-const emptyBagForm = { number: '', vehicle_id: '', description: '', is_active: true }
+const emptyBagForm = { number: '', description: '', is_active: true }
 
 export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, bags: initialBags, isAdmin }: Props) {
   const [vehicles, setVehicles] = useState(initialVehicles)
@@ -80,13 +80,13 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
   }
 
   function openAddBag() {
-    setBagForm({ ...emptyBagForm, vehicle_id: vehicles[0]?.id ?? '' })
+    setBagForm(emptyBagForm)
     setModal('add-bag')
   }
 
   function openEditBag(b: BagRow) {
     setBagTarget(b)
-    setBagForm({ number: b.number, vehicle_id: b.vehicle_id, description: b.description ?? '', is_active: b.is_active })
+    setBagForm({ number: b.number, description: b.description ?? '', is_active: b.is_active })
     setModal('edit-bag')
   }
 
@@ -152,18 +152,16 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
     setSaveError('')
 
     const number = bagForm.number.trim()
-    const vehicle_id = bagForm.vehicle_id
     const description = bagForm.description.trim() || null
-    const vehicle = vehicles.find(v => v.id === vehicle_id)
 
     if (modal === 'edit-bag' && bagTarget) {
-      const { data, error } = await updateBagAction(lang, bagTarget.id, { number, vehicle_id, description, is_active: bagForm.is_active })
+      const { data, error } = await updateBagAction(lang, bagTarget.id, { number, description, is_active: bagForm.is_active })
       if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setBags(prev => prev.map(b => b.id === data.id ? { ...data, vehicle } : b))
+      if (data) setBags(prev => prev.map(b => b.id === data.id ? data : b))
     } else {
-      const { data, error } = await createBagAction(lang, { number, vehicle_id, description })
+      const { data, error } = await createBagAction(lang, { number, description })
       if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setBags(prev => [...prev, { ...data, vehicle }].sort((a, b) => a.number.localeCompare(b.number)))
+      if (data) setBags(prev => [...prev, data].sort((a, b) => a.number.localeCompare(b.number)))
     }
 
     setSaving(false)
@@ -288,7 +286,6 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
             {isAdmin && (
               <button
                 onClick={openAddBag}
-                disabled={vehicles.filter(v => v.is_active).length === 0}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -313,9 +310,6 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                    {b.vehicle?.number ?? '—'}
-                  </span>
                   {isAdmin && (
                     <div className="flex items-center gap-1">
                       <button onClick={() => openEditBag(b)} title={dict.vehicles.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
@@ -495,7 +489,7 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
             </button>
             <button
               onClick={handleSaveBag}
-              disabled={saving || !bagForm.number.trim() || !bagForm.vehicle_id}
+              disabled={saving || !bagForm.number.trim()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -503,18 +497,6 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
             </button>
           </>}
         >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.vehicleLabel}</label>
-            <select
-              value={bagForm.vehicle_id}
-              onChange={e => setBagForm(f => ({ ...f, vehicle_id: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-            >
-              {vehicles.filter(v => v.is_active || v.id === bagForm.vehicle_id).map(v => (
-                <option key={v.id} value={v.id}>{v.number}{v.name ? ` — ${v.name}` : ''}</option>
-              ))}
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
             <input

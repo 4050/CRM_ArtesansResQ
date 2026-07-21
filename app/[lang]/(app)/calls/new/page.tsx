@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { getActiveVehicles } from '@/lib/data/vehicles'
-import { getActiveBagsWithVehicle } from '@/lib/data/bags'
+import { getActiveBags } from '@/lib/data/bags'
 import { getTeamStockOptions } from '@/lib/data/team-stock'
 import { getDictionary, hasLocale } from '../../../dictionaries'
 import NewCallForm from './NewCallForm'
@@ -19,7 +19,7 @@ export default async function NewCallPage({ params }: { params: Promise<{ lang: 
 
   const [vehicles, bags, consumables, { data: currentUser }] = await Promise.all([
     getActiveVehicles(),
-    getActiveBagsWithVehicle(),
+    getActiveBags(),
     getTeamStockOptions(),
     supabase.from('users').select('id, name').eq('id', userId).single(),
   ])

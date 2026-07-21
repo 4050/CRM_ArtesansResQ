@@ -15,7 +15,7 @@ interface Props {
   lang: Locale
   dict: Dictionary
   vehicles: Vehicle[]
-  bags: (Bag & { vehicle?: { number: string } })[]
+  bags: Bag[]
   consumables: ConsumableOption[]
   currentUserName: string
 }
@@ -36,8 +36,6 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  const filteredBags = vehicleId ? bags.filter(b => b.vehicle_id === vehicleId) : bags
 
   function getConsumable(id: string) {
     return consumables.find(c => c.id === id)
@@ -138,7 +136,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
               </label>
               <select
                 value={vehicleId}
-                onChange={e => { setVehicleId(e.target.value); setBagId('') }}
+                onChange={e => setVehicleId(e.target.value)}
                 className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
               >
                 <option value="">{dict.calls.form.selectVehicle}</option>
@@ -157,7 +155,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
                 className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
               >
                 <option value="">{dict.calls.form.selectBag}</option>
-                {filteredBags.map(b => (
+                {bags.map(b => (
                   <option key={b.id} value={b.id}>{b.number}{b.description ? ` — ${b.description}` : ''}</option>
                 ))}
               </select>

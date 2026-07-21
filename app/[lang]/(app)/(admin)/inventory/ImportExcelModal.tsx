@@ -130,7 +130,7 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
                   <tbody className="divide-y divide-slate-50">
                     {preview.toCreate.map(row => (
                       <tr key={row.rowNumber}>
-                        <td className="px-3 py-1.5 font-mono text-xs text-slate-500">{row.code ?? '—'}</td>
+                        <td className="px-3 py-1.5 font-mono text-xs text-slate-500">{row.code}</td>
                         <td className="px-3 py-1.5 text-slate-900">{row.name}</td>
                         <td className="px-3 py-1.5 text-slate-500">{categoryLabel(dict, row.category)}</td>
                         <td className="px-3 py-1.5 text-right font-semibold text-green-600">+{row.quantity} {unitLabel(dict, row.unit)}</td>

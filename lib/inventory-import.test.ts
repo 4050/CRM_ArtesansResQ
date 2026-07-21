@@ -57,9 +57,9 @@ describe('parseRawRow', () => {
   })
 
   it('defaults category to "other" and qty_minimum to 0 when absent', () => {
-    const result = parseRawRow({ name: 'Bandage', quantity: 5 })
+    const result = parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5 })
     expect(result).toEqual({
-      row: { code: null, name: 'Bandage', category: 'other', unit: '', quantity: 5, qty_minimum: 0, description: null },
+      row: { code: 'TST-1', name: 'Bandage', category: 'other', unit: '', quantity: 5, qty_minimum: 0, description: null },
     })
   })
 
@@ -69,20 +69,24 @@ describe('parseRawRow', () => {
   })
 
   it('rejects a row with no name', () => {
-    expect(parseRawRow({ quantity: 5 })).toEqual({ error: 'Missing name' })
+    expect(parseRawRow({ code: 'TST-1', quantity: 5 })).toEqual({ error: 'Missing name' })
+  })
+
+  it('rejects a row with no code', () => {
+    expect(parseRawRow({ name: 'Bandage', quantity: 5 })).toEqual({ error: 'Missing code' })
   })
 
   it('rejects a zero or negative quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', quantity: 0 })).toEqual({ error: 'Quantity must be a positive number' })
-    expect(parseRawRow({ name: 'Bandage', quantity: -3 })).toEqual({ error: 'Quantity must be a positive number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 0 })).toEqual({ error: 'Quantity must be a positive number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: -3 })).toEqual({ error: 'Quantity must be a positive number' })
   })
 
   it('rejects a non-numeric quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', quantity: 'lots' })).toEqual({ error: 'Quantity must be a positive number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 'lots' })).toEqual({ error: 'Quantity must be a positive number' })
   })
 
   it('rejects a negative minimum stock', () => {
-    expect(parseRawRow({ name: 'Bandage', quantity: 5, min: -1 })).toEqual({
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, min: -1 })).toEqual({
       error: 'Minimum stock must be zero or a positive number',
     })
   })

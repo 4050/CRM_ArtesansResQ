@@ -3,7 +3,7 @@
 // file, which can only export async actions) so it's directly unit-testable.
 
 export interface ParsedRow {
-  code: string | null
+  code: string
   name: string
   category: string
   // Normalized (lowercase/trimmed) but not yet checked against the known
@@ -65,17 +65,18 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
   const name = typeof mapped.name === 'string' ? mapped.name.trim() : ''
   if (!name) return { error: 'Missing name' }
 
+  const codeRaw = mapped.code
+  const code = typeof codeRaw === 'string' && codeRaw.trim()
+    ? codeRaw.trim()
+    : (typeof codeRaw === 'number' ? String(codeRaw) : '')
+  if (!code) return { error: 'Missing code' }
+
   const quantity = Number(mapped.quantity)
   if (!Number.isFinite(quantity) || quantity <= 0) return { error: 'Quantity must be a positive number' }
 
   const qtyMinRaw = mapped.qty_minimum
   const qty_minimum = qtyMinRaw != null && qtyMinRaw !== '' ? Number(qtyMinRaw) : 0
   if (!Number.isFinite(qty_minimum) || qty_minimum < 0) return { error: 'Minimum stock must be zero or a positive number' }
-
-  const codeRaw = mapped.code
-  const code = typeof codeRaw === 'string' && codeRaw.trim()
-    ? codeRaw.trim()
-    : (typeof codeRaw === 'number' ? String(codeRaw) : null)
 
   const category = typeof mapped.category === 'string' && mapped.category.trim()
     ? mapped.category.trim().toLowerCase()

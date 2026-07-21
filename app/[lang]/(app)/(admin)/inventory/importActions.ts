@@ -10,7 +10,7 @@ import { parseRawRow } from '@/lib/inventory-import'
 
 export interface ImportRow {
   rowNumber: number
-  code: string | null
+  code: string
   name: string
   category: string
   unit: ConsumableUnit
@@ -80,7 +80,7 @@ export async function parseInventoryExcelAction(formData: FormData): Promise<{ d
     }
     const { code, name, category, unit, quantity, qty_minimum, description } = result.row
 
-    const existingMatch = code ? byCode.get(code.toLowerCase()) : undefined
+    const existingMatch = byCode.get(code.toLowerCase())
 
     if (existingMatch) {
       // Matched by code: this row restocks the existing item. Its
@@ -101,14 +101,12 @@ export async function parseInventoryExcelAction(formData: FormData): Promise<{ d
       return
     }
 
-    if (code) {
-      const codeKey = code.toLowerCase()
-      if (seenNewCodes.has(codeKey)) {
-        errors.push({ rowNumber, message: `Duplicate code "${code}" also appears in another new row in this file` })
-        return
-      }
-      seenNewCodes.add(codeKey)
+    const codeKey = code.toLowerCase()
+    if (seenNewCodes.has(codeKey)) {
+      errors.push({ rowNumber, message: `Duplicate code "${code}" also appears in another new row in this file` })
+      return
     }
+    seenNewCodes.add(codeKey)
 
     toCreate.push({ rowNumber, code, name, category, unit: unit as ConsumableUnit, quantity, qty_minimum, description })
   })

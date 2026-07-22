@@ -249,9 +249,9 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-900">{dict.inventory.title}</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           {isAdmin && (
             <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
               <input
@@ -275,13 +275,13 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         </div>
       </div>
 
-      <div className="flex items-center gap-1 border-b border-slate-200">
+      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto">
         {[ALL_SOURCES, ...CONSUMABLE_SOURCES].map(src => (
           <button
             key={src}
             onClick={() => setSourceTab(src)}
             className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0',
               sourceTab === src
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'

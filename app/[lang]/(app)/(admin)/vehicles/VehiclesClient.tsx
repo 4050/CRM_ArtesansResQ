@@ -200,12 +200,12 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
 
       {/* Vehicles */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Truck className="w-4 h-4 text-slate-400" />
             <h2 className="font-semibold text-slate-900">{dict.vehicles.vehiclesSection}</h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             {isAdmin && (
               <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
                 <input
@@ -233,7 +233,7 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
         ) : (
           <div className="divide-y divide-slate-100">
             {visibleVehicles.map(v => (
-              <div key={v.id} className={cn('px-5 py-3 flex items-center justify-between', !v.is_active && 'opacity-50')}>
+              <div key={v.id} className={cn('px-5 py-3 flex items-center justify-between flex-wrap gap-2', !v.is_active && 'opacity-50')}>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
                     {v.number}
@@ -266,12 +266,12 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
 
       {/* Bags */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-slate-400" />
             <h2 className="font-semibold text-slate-900">{dict.vehicles.bagsSection}</h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             {isAdmin && (
               <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
                 <input
@@ -299,7 +299,7 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
         ) : (
           <div className="divide-y divide-slate-100">
             {visibleBags.map(b => (
-              <div key={b.id} className={cn('px-5 py-3 flex items-center justify-between', !b.is_active && 'opacity-50')}>
+              <div key={b.id} className={cn('px-5 py-3 flex items-center justify-between flex-wrap gap-2', !b.is_active && 'opacity-50')}>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                     {b.number}

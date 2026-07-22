@@ -87,7 +87,7 @@ export interface StockMovement {
   quantity_after: number
   user_id: string | null
   created_at: string
-  consumable?: Pick<Consumable, 'name' | 'unit' | 'category'>
+  consumable?: Pick<Consumable, 'name' | 'unit' | 'category' | 'source'>
   user?: Pick<User, 'name'> | null
 }
 

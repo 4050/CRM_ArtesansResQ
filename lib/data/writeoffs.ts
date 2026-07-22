@@ -8,7 +8,7 @@ export interface WriteoffListFilters {
 
 // Runtime boundary check - see the comment in lib/data/movements.ts for why
 // this is more than a type annotation (no generated Supabase types here).
-const consumableSummarySchema = z.object({ name: z.string(), unit: z.string(), category: z.string() }).nullable()
+const consumableSummarySchema = z.object({ name: z.string(), unit: z.string(), category: z.string(), source: z.string() }).nullable()
 const userSummarySchema = z.object({ name: z.string() }).nullable()
 
 const writeoffRowSchema = z.object({
@@ -43,7 +43,7 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
     .from('writeoffs')
     .select(`
       *,
-      consumable:consumables(name, unit, category),
+      consumable:consumables(name, unit, category, source),
       user:users(name),
       call:calls(call_number, date, vehicle:vehicles(number), bag:bags(number))
     `)
@@ -70,7 +70,7 @@ export async function getWriteoffsInRange(fromIso: string, toIso: string): Promi
   const supabase = await createClient()
   const { data } = await supabase
     .from('writeoffs')
-    .select('quantity, consumable:consumables(name, unit, category), user:users(name)')
+    .select('quantity, consumable:consumables(name, unit, category, source), user:users(name)')
     .gte('created_at', fromIso)
     .lte('created_at', toIso)
     .order('created_at', { ascending: false })

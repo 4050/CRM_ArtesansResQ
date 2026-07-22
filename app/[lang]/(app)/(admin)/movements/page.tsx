@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History } from 'lucide-react'
 import { formatDateTime, computeTotalPages } from '@/lib/utils'
-import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
 import { getUserOptions } from '@/lib/data/users'
@@ -163,7 +163,7 @@ export default async function MovementsPage({
               <tbody className="divide-y divide-slate-100">{movements.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 text-sm text-slate-500 whitespace-nowrap">{formatDateTime(item.created_at, lang)}</td>
-                  <td className="px-5 py-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className="text-xs text-slate-400">{item.consumable ? categoryLabel(dict, item.consumable.category) : ''}</div></td>
+                  <td className="px-5 py-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className="text-xs text-slate-400">{item.consumable ? `${categoryLabel(dict, item.consumable.category)} · ${sourceLabel(dict, item.consumable.source)}` : ''}</div></td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.warehouse === 'team' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                       {warehouseLabels[item.warehouse]}
@@ -186,6 +186,9 @@ export default async function MovementsPage({
                   <span>{warehouseLabels[item.warehouse]} · {movementLabels[item.movement_type]} · {item.user?.name ?? dict.movements.system}</span>
                   <span>{item.quantity_before} → {item.quantity_after}</span>
                 </div>
+                {item.consumable && (
+                  <div className="text-xs text-slate-400 mt-0.5">{categoryLabel(dict, item.consumable.category)} · {sourceLabel(dict, item.consumable.source)}</div>
+                )}
                 <div className="text-xs text-slate-400 mt-1">{formatDateTime(item.created_at, lang)}</div>
               </div>
             ))}</div>

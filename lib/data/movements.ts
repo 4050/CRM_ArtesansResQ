@@ -32,7 +32,7 @@ const movementRowSchema = z.object({
   user_id: z.string().nullable(),
   created_at: z.string(),
   warehouse: z.enum(['main', 'team']),
-  consumable: z.object({ name: z.string(), unit: z.string(), category: z.string() }).nullable(),
+  consumable: z.object({ name: z.string(), unit: z.string(), category: z.string(), source: z.string() }).nullable(),
   user: z.object({ name: z.string() }).nullable(),
 })
 
@@ -57,7 +57,7 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
     .select(`
       id, consumable_id, movement_type, quantity_delta,
       quantity_before, quantity_after, user_id, created_at, warehouse,
-      consumable:consumables(name, unit, category),
+      consumable:consumables(name, unit, category, source),
       user:users(name)
     `, { count: 'exact' })
     .order('created_at', { ascending: false })

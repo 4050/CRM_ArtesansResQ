@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
-import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel } from '@/lib/consumable-labels'
 import { getWriteoffs } from '@/lib/data/writeoffs'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
 import { getUserOptions } from '@/lib/data/users'
@@ -101,9 +101,16 @@ export default async function WriteoffsPage({
                     {w.consumable?.name ?? '—'}
                   </td>
                   <td className="px-5 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                      {w.consumable ? categoryLabel(dict, w.consumable.category) : '—'}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                        {w.consumable ? categoryLabel(dict, w.consumable.category) : '—'}
+                      </span>
+                      {w.consumable && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                          {sourceLabel(dict, w.consumable.source)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-right text-sm font-semibold text-slate-900">
                     {w.quantity} <span className="font-normal text-slate-400">{w.consumable ? unitLabel(dict, w.consumable.unit) : ''}</span>
@@ -139,7 +146,10 @@ export default async function WriteoffsPage({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-slate-900 truncate">{w.consumable?.name ?? '—'}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{formatDateTime(w.created_at, lang)}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {formatDateTime(w.created_at, lang)}
+                      {w.consumable && <> · {sourceLabel(dict, w.consumable.source)}</>}
+                    </div>
                   </div>
                   <div className="text-sm font-bold text-slate-900 shrink-0">
                     {w.quantity} <span className="font-normal text-slate-400">{w.consumable ? unitLabel(dict, w.consumable.unit) : ''}</span>

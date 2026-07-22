@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 export interface WriteoffListFilters {
   consumableId?: string
   userId?: string
+  // Filters by the consumable's procurement source. writeoffs has no source
+  // column of its own (it's a property of the consumable, not the
+  // write-off), so this is resolved to a set of consumable ids up front -
+  // see the same tradeoff explained in lib/data/movements.ts.
+  source?: string
 }
 
 // Runtime boundary check - see the comment in lib/data/movements.ts for why
@@ -52,6 +57,13 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
 
   if (filters.consumableId) query = query.eq('consumable_id', filters.consumableId)
   if (filters.userId) query = query.eq('user_id', filters.userId)
+
+  if (filters.source) {
+    const { data: matches } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    const ids = (matches ?? []).map(c => c.id)
+    if (ids.length === 0) return []
+    query = query.in('consumable_id', ids)
+  }
 
   const { data } = await query
   return z.array(writeoffRowSchema).parse(data ?? [])

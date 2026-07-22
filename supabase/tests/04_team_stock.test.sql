@@ -1,11 +1,10 @@
 -- Fixtures (from 00_setup.sql):
 --   admin_a = bbbbbbbb-...-0002 (org A)
 --
--- Only covers transfer_to_team_stock - return_from_team_stock and
--- discard_from_team_stock live on the not-yet-merged
--- team-stock-return-to-main branch; extend this file once that lands.
+-- Covers transfer_to_team_stock and delete_team_stock_item.
+-- return_from_team_stock/discard_from_team_stock still need coverage here.
 begin;
-select plan(4);
+select plan(9);
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
 
@@ -31,6 +30,34 @@ select throws_like(
   $$ select public.transfer_to_team_stock('cccccccc-0000-0000-0000-000000000002'::uuid, 999) $$,
   'Not enough%in stock%',
   'issuing more than what''s in the main warehouse is rejected'
+);
+
+select throws_like(
+  $$ select public.delete_team_stock_item('cccccccc-0000-0000-0000-000000000002'::uuid) $$,
+  'Return or discard%before removing%',
+  'deleting a team-stock item with remaining stock is rejected'
+);
+
+select lives_ok(
+  $$ select public.discard_from_team_stock('cccccccc-0000-0000-0000-000000000002'::uuid, 5) $$,
+  'admin can discard the remaining team stock down to zero'
+);
+
+select lives_ok(
+  $$ select public.delete_team_stock_item('cccccccc-0000-0000-0000-000000000002'::uuid) $$,
+  'admin can delete a team-stock item once its quantity is zero'
+);
+
+select is(
+  (select count(*)::int from public.team_stock where consumable_id = 'cccccccc-0000-0000-0000-000000000002'::uuid),
+  0,
+  'team_stock row is gone after deletion'
+);
+
+select throws_like(
+  $$ select public.delete_team_stock_item('cccccccc-0000-0000-0000-000000000002'::uuid) $$,
+  'Item not found in team stock',
+  'deleting an already-removed item is rejected'
 );
 
 select * from finish();

@@ -45,6 +45,11 @@
       "solutions": "Solutions",
       "medications": "Medications",
       "other": "Other"
+    },
+    "sources": {
+      "state_procurement": "State procurement",
+      "charity": "Charitable aid",
+      "other": "Other"
     }
   },
   "dashboard": {
@@ -137,9 +142,11 @@
     "newItem": "New item",
     "searchPlaceholder": "Search by name...",
     "allCategories": "All categories",
+    "allSources": "All",
     "code": "Code",
     "name": "Name",
     "category": "Category",
+    "source": "Source",
     "unit": "Unit",
     "stock": "In stock",
     "minimum": "Minimum",

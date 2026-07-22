@@ -45,6 +45,11 @@
       "solutions": "Розчини",
       "medications": "Медикаменти",
       "other": "Інше"
+    },
+    "sources": {
+      "state_procurement": "Держзакупівля",
+      "charity": "Благодійна допомога",
+      "other": "Інше"
     }
   },
   "dashboard": {
@@ -137,9 +142,11 @@
     "newItem": "Нова позиція",
     "searchPlaceholder": "Пошук за назвою...",
     "allCategories": "Усі категорії",
+    "allSources": "Усі",
     "code": "Код",
     "name": "Назва",
     "category": "Категорія",
+    "source": "Джерело",
     "unit": "Од.",
     "stock": "Залишок",
     "minimum": "Мінімум",

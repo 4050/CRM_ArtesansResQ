@@ -542,6 +542,41 @@ $$;
 revoke all on function public.discard_from_team_stock(uuid, integer) from public;
 grant execute on function public.discard_from_team_stock(uuid, integer) to authenticated;
 
+-- Removes a team_stock row entirely once its quantity is back to zero (via
+-- return_from_team_stock/discard_from_team_stock) - blocked while any
+-- stock remains, so the remainder can't silently disappear unlogged.
+create or replace function public.delete_team_stock_item(p_consumable_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  current_qty integer;
+begin
+  if not public.is_admin() then
+    raise exception 'Only an administrator can remove items from team stock';
+  end if;
+
+  select qty_in_stock into current_qty
+  from public.team_stock
+  where consumable_id = p_consumable_id and organization_id = public.current_org_id();
+
+  if not found then
+    raise exception 'Item not found in team stock';
+  end if;
+
+  if current_qty > 0 then
+    raise exception 'Return or discard the remaining % unit(s) before removing this item from team stock', current_qty;
+  end if;
+
+  delete from public.team_stock
+  where consumable_id = p_consumable_id and organization_id = public.current_org_id();
+end;
+$$;
+
+revoke all on function public.delete_team_stock_item(uuid) from public;
+grant execute on function public.delete_team_stock_item(uuid) to authenticated;
+
 -- adjust_stock не выдан authenticated напрямую — вызывается только из функций
 -- ниже, каждая из которых уже проверила принадлежность организации.
 create or replace function public.restock_consumable(p_consumable_id uuid, p_quantity integer)

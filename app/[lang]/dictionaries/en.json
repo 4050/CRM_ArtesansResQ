@@ -106,6 +106,8 @@
     "allWarehouses": "All warehouses",
     "warehouseMain": "Main",
     "warehouseTeam": "Team",
+    "source": "Source",
+    "allSources": "All sources",
     "employee": "Employee",
     "allEmployees": "All employees",
     "fromDate": "From date",

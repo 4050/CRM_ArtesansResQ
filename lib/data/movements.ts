@@ -11,6 +11,12 @@ export interface MovementListFilters {
   userId?: string
   type?: StockMovementType
   warehouse?: Warehouse
+  // Filters by the consumable's procurement source. stock_movements has no
+  // source column of its own (it's a property of the consumable, not the
+  // movement), so this is resolved to a set of consumable ids up front
+  // rather than filtered via an embedded-relation query - keeps the exact
+  // `count` for pagination simple and correct.
+  source?: string
   fromIso?: string
   toIso?: string
   page?: number
@@ -69,6 +75,13 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
   if (filters.warehouse) query = query.eq('warehouse', filters.warehouse)
   if (filters.fromIso) query = query.gte('created_at', filters.fromIso)
   if (filters.toIso) query = query.lte('created_at', filters.toIso)
+
+  if (filters.source) {
+    const { data: matches } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    const ids = (matches ?? []).map(c => c.id)
+    if (ids.length === 0) return { rows: [], count: 0, page, pageSize }
+    query = query.in('consumable_id', ids)
+  }
 
   const { data, count } = await query
   return {

@@ -14,7 +14,9 @@ const userSummarySchema = z.object({ name: z.string() }).nullable()
 const writeoffRowSchema = z.object({
   id: z.string(),
   call_id: z.string().nullable(),
-  consumable_id: z.string(),
+  // Nullable since 202607230001: delete_consumable no longer refuses when
+  // write-offs still reference the item, it just nulls this out instead.
+  consumable_id: z.string().nullable(),
   quantity: z.number(),
   created_at: z.string(),
   consumable: consumableSummarySchema,

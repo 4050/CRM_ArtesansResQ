@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2, Ban } from 'lucide-react'
 import {
   createConsumableAction,
@@ -36,11 +37,15 @@ const emptyForm = {
 
 type ModalMode = 'edit' | 'add' | 'restock' | 'deactivate' | 'delete' | 'issue' | null
 
-// delete_consumable's foreign_key_violation handler always raises this exact
-// message (see supabase/schema.sql) - matched loosely since the app never
+// delete_consumable refuses (with this exact message - see
+// supabase/schema.sql) while the team is still holding any stock of the
+// item, since that can't be deleted away silently. Write-offs/stock
+// movements no longer block a delete at all - their consumable_id just
+// gets nulled out and the historical row is kept - so this is the only
+// failure mode worth a dedicated hint. Matched loosely since the app never
 // translates RPC error text.
-function deleteBlockedByReferences(error: string): boolean {
-  return error.includes('still reference it')
+function deleteBlockedByTeamStock(error: string): boolean {
+  return error.includes('in team stock')
 }
 
 export default function InventoryClient({ lang, dict, consumables: initial, isAdmin }: Props) {
@@ -361,25 +366,23 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
             <span>{dict.inventory.deleteWarning}</span>
           </div>
           {saveError && (
-            // The DB blocks a hard delete while write-offs/movements still
-            // reference this item (delete_consumable's foreign_key_violation
-            // handler) - that's an expected, recoverable outcome, not a
-            // failure to just dump on the admin as raw text, so it gets its
-            // own friendlier box with a one-click way to deactivate instead
-            // (same target, no need to re-pick the item).
-            deleteBlockedByReferences(saveError) ? (
+            // delete_consumable refuses while the team still holds stock of
+            // this item - expected and recoverable, not a failure to just
+            // dump as raw text, so it gets its own box with a shortcut to
+            // where the admin actually needs to act (team stock isn't
+            // manageable from this modal/page).
+            deleteBlockedByTeamStock(saveError) ? (
               <div className="flex flex-col gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{dict.inventory.deleteBlockedHint}</span>
+                  <span>{dict.inventory.deleteBlockedByTeamStockHint}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setSaveError(''); setModal('deactivate') }}
+                <Link
+                  href={`/${lang}/team-stock`}
                   className="self-start text-sm font-semibold text-amber-900 underline hover:no-underline"
                 >
-                  {dict.inventory.deactivateInstead}
-                </button>
+                  {dict.inventory.goToTeamStock}
+                </Link>
               </div>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">

@@ -60,7 +60,9 @@ export interface Call {
 export interface Writeoff {
   id: string
   call_id: string
-  consumable_id: string
+  // Nullable since delete_consumable can fully delete a referenced item -
+  // see supabase/migrations/202607230001_allow_consumable_delete_with_history.sql.
+  consumable_id: string | null
   quantity: number
   created_at: string
   consumable?: Consumable
@@ -75,7 +77,9 @@ export type StockMovementType = 'opening_balance' | 'increase' | 'decrease'
 
 export interface StockMovement {
   id: string
-  consumable_id: string
+  // Nullable since delete_consumable can fully delete a referenced item -
+  // see supabase/migrations/202607230001_allow_consumable_delete_with_history.sql.
+  consumable_id: string | null
   movement_type: StockMovementType
   quantity_delta: number
   quantity_before: number

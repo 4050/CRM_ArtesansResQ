@@ -24,7 +24,10 @@ export interface MovementListFilters {
 // clear ZodError instead of silently trusting an `as unknown as` cast.
 const movementRowSchema = z.object({
   id: z.string(),
-  consumable_id: z.string(),
+  // Nullable since 202607230001: delete_consumable no longer refuses when
+  // stock movements still reference the item, it just nulls this out
+  // instead (the column itself dropped its NOT NULL for the same reason).
+  consumable_id: z.string().nullable(),
   movement_type: z.enum(['opening_balance', 'increase', 'decrease']),
   quantity_delta: z.number(),
   quantity_before: z.number(),

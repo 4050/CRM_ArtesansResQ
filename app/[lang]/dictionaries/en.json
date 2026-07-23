@@ -151,6 +151,8 @@
     "deleteTitle": "Delete item permanently?",
     "inStockShort": "In stock",
     "deleteWarning": "The record will be permanently deleted with no way to undo. If write-offs or stock movements still reference this item, the deletion will fail — deactivate it first.",
+    "deleteBlockedHint": "This item can't be permanently deleted while write-offs or stock movements still reference it.",
+    "deactivateInstead": "Deactivate instead",
     "deactivate": "Deactivate",
     "makeInactive": "Deactivate",
     "deactivateTitle": "Deactivate item?",

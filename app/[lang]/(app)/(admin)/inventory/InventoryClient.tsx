@@ -36,6 +36,13 @@ const emptyForm = {
 
 type ModalMode = 'edit' | 'add' | 'restock' | 'deactivate' | 'delete' | 'issue' | null
 
+// delete_consumable's foreign_key_violation handler always raises this exact
+// message (see supabase/schema.sql) - matched loosely since the app never
+// translates RPC error text.
+function deleteBlockedByReferences(error: string): boolean {
+  return error.includes('still reference it')
+}
+
 export default function InventoryClient({ lang, dict, consumables: initial, isAdmin }: Props) {
   const [consumables, setConsumables] = useState(initial)
   const [modal, setModal] = useState<ModalMode>(null)
@@ -354,9 +361,31 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
             <span>{dict.inventory.deleteWarning}</span>
           </div>
           {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.inventory.error}: {saveError}
-            </div>
+            // The DB blocks a hard delete while write-offs/movements still
+            // reference this item (delete_consumable's foreign_key_violation
+            // handler) - that's an expected, recoverable outcome, not a
+            // failure to just dump on the admin as raw text, so it gets its
+            // own friendlier box with a one-click way to deactivate instead
+            // (same target, no need to re-pick the item).
+            deleteBlockedByReferences(saveError) ? (
+              <div className="flex flex-col gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{dict.inventory.deleteBlockedHint}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSaveError(''); setModal('deactivate') }}
+                  className="self-start text-sm font-semibold text-amber-900 underline hover:no-underline"
+                >
+                  {dict.inventory.deactivateInstead}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                {dict.inventory.error}: {saveError}
+              </div>
+            )
           )}
         </Modal>
       )}

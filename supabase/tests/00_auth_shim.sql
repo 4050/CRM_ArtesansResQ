@@ -8,6 +8,19 @@
 -- inventing a parallel mechanism.
 create extension if not exists pgtap;
 
+-- schema.sql's RLS policies and function grants target the "authenticated"
+-- Postgres role, which Supabase provisions out of the box but a plain
+-- postgres:16 instance (as used here and in CI) does not. Create it as a
+-- plain, non-login role - nothing here ever connects as it, policies just
+-- check membership - guarded so re-running this file locally is safe.
+do $$
+begin
+  if not exists (select from pg_roles where rolname = 'authenticated') then
+    create role authenticated;
+  end if;
+end
+$$;
+
 create schema if not exists auth;
 
 create table auth.users (

@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History } from 'lucide-react'
 import { formatDateTime, computeTotalPages } from '@/lib/utils'
-import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
 import { getUserOptions } from '@/lib/data/users'
@@ -17,6 +17,7 @@ type MovementSearchParams = {
   user?: string
   type?: StockMovementType
   warehouse?: Warehouse
+  source?: string
   from?: string
   to?: string
   page?: string
@@ -30,6 +31,7 @@ function pageHref(lang: string, sp: MovementSearchParams, page: number) {
   if (sp.user) params.set('user', sp.user)
   if (sp.type) params.set('type', sp.type)
   if (sp.warehouse) params.set('warehouse', sp.warehouse)
+  if (sp.source) params.set('source', sp.source)
   if (sp.from) params.set('from', sp.from)
   if (sp.to) params.set('to', sp.to)
   if (page > 1) params.set('page', String(page))
@@ -69,6 +71,7 @@ export default async function MovementsPage({
       userId: sp.user,
       type: sp.type && sp.type in movementLabels ? sp.type : undefined,
       warehouse: sp.warehouse === 'main' || sp.warehouse === 'team' ? sp.warehouse : undefined,
+      source: sp.source && (CONSUMABLE_SOURCES as string[]).includes(sp.source) ? sp.source : undefined,
       fromIso: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
       toIso: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
       page,
@@ -114,6 +117,13 @@ export default async function MovementsPage({
           </select>
         </label>
         <label className="text-sm text-slate-600">
+          <span className="block mb-1.5 font-medium">{dict.movements.source}</span>
+          <select name="source" defaultValue={sp.source ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+            <option value="">{dict.movements.allSources}</option>
+            {CONSUMABLE_SOURCES.map(src => <option key={src} value={src}>{sourceLabel(dict, src)}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-slate-600">
           <span className="block mb-1.5 font-medium">{dict.movements.employee}</span>
           <select name="user" defaultValue={sp.user ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white max-w-48">
             <option value="">{dict.movements.allEmployees}</option>
@@ -129,7 +139,7 @@ export default async function MovementsPage({
           <input name="to" type="date" defaultValue={to} className="px-3 py-2 border border-slate-300 rounded-lg" />
         </label>
         <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.movements.apply}</button>
-        {(sp.consumable || sp.user || sp.type || sp.warehouse || from || to) && (
+        {(sp.consumable || sp.user || sp.type || sp.warehouse || sp.source || from || to) && (
           <a href={`/${lang}/movements`} className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm rounded-lg">{dict.movements.reset}</a>
         )}
       </form>
@@ -163,7 +173,7 @@ export default async function MovementsPage({
               <tbody className="divide-y divide-slate-100">{movements.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 text-sm text-slate-500 whitespace-nowrap">{formatDateTime(item.created_at, lang)}</td>
-                  <td className="px-5 py-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className="text-xs text-slate-400">{item.consumable ? categoryLabel(dict, item.consumable.category) : ''}</div></td>
+                  <td className="px-5 py-3"><div className="text-sm font-medium text-slate-900">{item.consumable?.name ?? '—'}</div><div className="text-xs text-slate-400">{item.consumable ? `${categoryLabel(dict, item.consumable.category)} · ${sourceLabel(dict, item.consumable.source)}` : ''}</div></td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.warehouse === 'team' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                       {warehouseLabels[item.warehouse]}
@@ -186,6 +196,9 @@ export default async function MovementsPage({
                   <span>{warehouseLabels[item.warehouse]} · {movementLabels[item.movement_type]} · {item.user?.name ?? dict.movements.system}</span>
                   <span>{item.quantity_before} → {item.quantity_after}</span>
                 </div>
+                {item.consumable && (
+                  <div className="text-xs text-slate-400 mt-0.5">{categoryLabel(dict, item.consumable.category)} · {sourceLabel(dict, item.consumable.source)}</div>
+                )}
                 <div className="text-xs text-slate-400 mt-1">{formatDateTime(item.created_at, lang)}</div>
               </div>
             ))}</div>

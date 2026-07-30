@@ -52,6 +52,7 @@ create table public.consumables (
   name text not null,
   category text not null default 'other',
   unit text not null default 'pcs',
+  source text not null default 'other',
   qty_in_stock integer not null default 0 check (qty_in_stock >= 0),
   qty_minimum integer not null default 0 check (qty_minimum >= 0),
   description text,

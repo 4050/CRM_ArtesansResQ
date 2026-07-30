@@ -30,12 +30,17 @@ export type ConsumableUnit = 'pcs' | 'pair' | 'ml' | 'l' | 'g' | 'kg' | 'pack' |
 // column in the DB, so values outside this set are valid and just aren't translatable.
 export type ConsumableCategory = 'ppe' | 'dressings' | 'instruments' | 'solutions' | 'medications' | 'other'
 
+// Funding source the item was procured through — splits the main warehouse
+// into 3 tabs. Same free-text-in-DB convention as category/unit above.
+export type ConsumableSource = 'state_procurement' | 'charity' | 'other'
+
 export interface Consumable {
   id: string
   code: string | null
   name: string
   category: string
   unit: ConsumableUnit
+  source: string
   qty_in_stock: number
   qty_minimum: number
   description: string | null
@@ -86,7 +91,7 @@ export interface StockMovement {
   quantity_after: number
   user_id: string | null
   created_at: string
-  consumable?: Pick<Consumable, 'name' | 'unit' | 'category'>
+  consumable?: Pick<Consumable, 'name' | 'unit' | 'category' | 'source'>
   user?: Pick<User, 'name'> | null
 }
 

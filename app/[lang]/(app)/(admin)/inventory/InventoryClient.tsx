@@ -13,9 +13,10 @@ import {
 } from './actions'
 import type { Consumable, ConsumableUnit } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
-import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
+import { cn } from '@/lib/utils'
 
 interface Props {
   lang: Locale
@@ -29,11 +30,14 @@ const emptyForm = {
   name: '',
   category: 'other' as string,
   unit: 'pcs' as ConsumableUnit,
+  source: 'other' as string,
   qty_in_stock: 0,
   qty_minimum: 0,
   description: '',
   is_active: true,
 }
+
+const ALL_SOURCES = 'all'
 
 type ModalMode = 'edit' | 'add' | 'restock' | 'deactivate' | 'delete' | 'issue' | null
 
@@ -58,8 +62,15 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const [sourceTab, setSourceTab] = useState<string>(ALL_SOURCES)
 
   const visibleConsumables = consumables.filter(c => c.is_active || showInactive)
+  const tabConsumables = sourceTab === ALL_SOURCES
+    ? visibleConsumables
+    : visibleConsumables.filter(c => c.source === sourceTab)
+  const sourceCounts = Object.fromEntries(
+    CONSUMABLE_SOURCES.map(src => [src, visibleConsumables.filter(c => c.source === src).length])
+  )
 
   function openEdit(c: Consumable) {
     setTarget(c)
@@ -68,6 +79,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
       name: c.name,
       category: c.category,
       unit: c.unit,
+      source: c.source,
       qty_in_stock: c.qty_in_stock,
       qty_minimum: c.qty_minimum,
       description: c.description ?? '',
@@ -121,6 +133,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         name: payload.name,
         category: payload.category,
         unit: payload.unit,
+        source: payload.source,
         qty_minimum: payload.qty_minimum,
         description: payload.description,
         is_active: payload.is_active,
@@ -274,9 +287,29 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         </div>
       </div>
 
+      <div className="flex items-center gap-1 border-b border-slate-200">
+        {[ALL_SOURCES, ...CONSUMABLE_SOURCES].map(src => (
+          <button
+            key={src}
+            onClick={() => setSourceTab(src)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+              sourceTab === src
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            )}
+          >
+            {src === ALL_SOURCES ? dict.inventory.allSources : sourceLabel(dict, src)}
+            <span className="ml-1.5 text-xs text-slate-400">
+              {src === ALL_SOURCES ? visibleConsumables.length : sourceCounts[src]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <StockTable
         dict={dict}
-        items={visibleConsumables}
+        items={tabConsumables}
         labels={{
           searchPlaceholder: dict.inventory.searchPlaceholder,
           allCategories: dict.inventory.allCategories,
@@ -573,6 +606,17 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.source}</label>
+                <select
+                  value={form.source}
+                  onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                >
+                  {CONSUMABLE_SOURCES.map(src => <option key={src} value={src}>{sourceLabel(dict, src)}</option>)}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

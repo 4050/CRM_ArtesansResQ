@@ -1,6 +1,6 @@
 import { BarChart3, CalendarDays, Package, Users } from 'lucide-react'
 import { getWriteoffsInRange } from '@/lib/data/writeoffs'
-import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel } from '@/lib/consumable-labels'
 import { getDictionary, hasLocale } from '../../../dictionaries'
 import { notFound } from 'next/navigation'
 
@@ -34,11 +34,12 @@ export default async function ReportsPage({
 
   const totalQuantity = rows.reduce((sum, row) => sum + row.quantity, 0)
   const employees = new Set(rows.map(row => row.user?.name).filter(Boolean)).size
-  const byConsumable = Object.values(rows.reduce<Record<string, { name: string; unit: string; category: string; quantity: number }>>((acc, row) => {
+  const byConsumable = Object.values(rows.reduce<Record<string, { name: string; unit: string; category: string; source: string; quantity: number }>>((acc, row) => {
     const name = row.consumable?.name ?? dict.reports.deletedItem
     const category = row.consumable?.category ?? 'other'
-    const key = `${category}:${name}`
-    if (!acc[key]) acc[key] = { name, unit: row.consumable?.unit ?? 'pcs', category, quantity: 0 }
+    const source = row.consumable?.source ?? 'other'
+    const key = `${category}:${source}:${name}`
+    if (!acc[key]) acc[key] = { name, unit: row.consumable?.unit ?? 'pcs', category, source, quantity: 0 }
     acc[key].quantity += row.quantity
     return acc
   }, {})).sort((a, b) => b.quantity - a.quantity)
@@ -88,8 +89,8 @@ export default async function ReportsPage({
         ) : (
           <div className="divide-y divide-slate-100">
             {byConsumable.map(item => (
-              <div key={`${item.category}:${item.name}`} className="px-5 py-3 flex items-center justify-between gap-4">
-                <div><div className="text-sm font-medium text-slate-900">{item.name}</div><div className="text-xs text-slate-400">{categoryLabel(dict, item.category)}</div></div>
+              <div key={`${item.category}:${item.source}:${item.name}`} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div><div className="text-sm font-medium text-slate-900">{item.name}</div><div className="text-xs text-slate-400">{categoryLabel(dict, item.category)} · {sourceLabel(dict, item.source)}</div></div>
                 <div className="text-sm font-bold text-slate-900">{item.quantity} <span className="font-normal text-slate-400">{unitLabel(dict, item.unit)}</span></div>
               </div>
             ))}

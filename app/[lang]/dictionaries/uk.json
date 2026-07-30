@@ -45,6 +45,11 @@
       "solutions": "Розчини",
       "medications": "Медикаменти",
       "other": "Інше"
+    },
+    "sources": {
+      "state_procurement": "Держзакупівля",
+      "charity": "Благодійна допомога",
+      "other": "Інше"
     }
   },
   "dashboard": {
@@ -74,6 +79,7 @@
     "title": "Списання",
     "allConsumables": "Усі витратні матеріали",
     "allEmployees": "Усі співробітники",
+    "allSources": "Усі джерела",
     "apply": "Застосувати",
     "reset": "Скинути",
     "dateTime": "Дата й час",
@@ -101,6 +107,8 @@
     "allWarehouses": "Усі склади",
     "warehouseMain": "Основний",
     "warehouseTeam": "Команда",
+    "source": "Джерело",
+    "allSources": "Усі джерела",
     "employee": "Співробітник",
     "allEmployees": "Усі співробітники",
     "fromDate": "З дати",
@@ -137,9 +145,11 @@
     "newItem": "Нова позиція",
     "searchPlaceholder": "Пошук за назвою...",
     "allCategories": "Усі категорії",
+    "allSources": "Усі",
     "code": "Код",
     "name": "Назва",
     "category": "Категорія",
+    "source": "Джерело",
     "unit": "Од.",
     "stock": "Залишок",
     "minimum": "Мінімум",

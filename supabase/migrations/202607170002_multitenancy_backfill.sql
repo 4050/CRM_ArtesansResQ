@@ -1,0 +1,9 @@
+-- Мультитенантность, шаг 3: бэкфилл существующих строк в основную организацию.
+-- Идемпотентно (guard через "where organization_id is null"), безопасно перезапускать.
+update public.users set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.vehicles set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.bags set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.consumables set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.calls set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.writeoffs set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;
+update public.stock_movements set organization_id = '11111111-1111-1111-1111-111111111111' where organization_id is null;

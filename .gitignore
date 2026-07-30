@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# one-off admin scripts with secrets
+create-user.mjs
+set-password.mjs

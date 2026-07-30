@@ -45,6 +45,11 @@
       "solutions": "Solutions",
       "medications": "Medications",
       "other": "Other"
+    },
+    "sources": {
+      "state_procurement": "State procurement",
+      "charity": "Charitable aid",
+      "other": "Other"
     }
   },
   "dashboard": {
@@ -74,6 +79,7 @@
     "title": "Write-offs",
     "allConsumables": "All consumables",
     "allEmployees": "All employees",
+    "allSources": "All sources",
     "apply": "Apply",
     "reset": "Reset",
     "dateTime": "Date & time",
@@ -101,6 +107,8 @@
     "allWarehouses": "All warehouses",
     "warehouseMain": "Main",
     "warehouseTeam": "Team",
+    "source": "Source",
+    "allSources": "All sources",
     "employee": "Employee",
     "allEmployees": "All employees",
     "fromDate": "From date",
@@ -137,9 +145,11 @@
     "newItem": "New item",
     "searchPlaceholder": "Search by name...",
     "allCategories": "All categories",
+    "allSources": "All",
     "code": "Code",
     "name": "Name",
     "category": "Category",
+    "source": "Source",
     "unit": "Unit",
     "stock": "In stock",
     "minimum": "Minimum",
@@ -150,7 +160,9 @@
     "shownOf": "Showing {shown} of {total} items",
     "deleteTitle": "Delete item permanently?",
     "inStockShort": "In stock",
-    "deleteWarning": "The record will be permanently deleted with no way to undo. If write-offs or stock movements still reference this item, the deletion will fail — deactivate it first.",
+    "deleteWarning": "The record will be permanently deleted with no way to undo. Write-off and stock movement history is kept — the item will show up in it as \"Deleted item\". Deletion isn't possible while the team still holds any stock of this item.",
+    "deleteBlockedByTeamStockHint": "This item can't be deleted yet — the team still holds some of it in stock. Return or discard it there first.",
+    "goToTeamStock": "Go to team stock",
     "deactivate": "Deactivate",
     "makeInactive": "Deactivate",
     "deactivateTitle": "Deactivate item?",

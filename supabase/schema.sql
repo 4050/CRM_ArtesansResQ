@@ -52,6 +52,7 @@ create table public.consumables (
   name text not null,
   category text not null default 'other',
   unit text not null default 'pcs',
+  source text not null default 'other',
   qty_in_stock integer not null default 0 check (qty_in_stock >= 0),
   qty_minimum integer not null default 0 check (qty_minimum >= 0),
   description text,
@@ -78,7 +79,9 @@ create table public.calls (
 create table public.writeoffs (
   id uuid default gen_random_uuid() primary key,
   call_id uuid references public.calls(id) on delete cascade,
-  consumable_id uuid references public.consumables(id),
+  -- on delete set null (not cascade): a deleted consumable's write-off
+  -- history is kept, just orphaned - see 202607230001.
+  consumable_id uuid references public.consumables(id) on delete set null,
   quantity integer not null,
   user_id uuid references public.users(id),
   organization_id uuid not null references public.organizations(id),
@@ -88,7 +91,9 @@ create table public.writeoffs (
 -- Журнал движения складских остатков
 create table public.stock_movements (
   id uuid default gen_random_uuid() primary key,
-  consumable_id uuid not null references public.consumables(id),
+  -- Nullable + on delete set null, same reasoning as writeoffs.consumable_id
+  -- above - see 202607230001.
+  consumable_id uuid references public.consumables(id) on delete set null,
   movement_type text not null check (movement_type in ('opening_balance', 'increase', 'decrease')),
   quantity_delta integer not null check (quantity_delta <> 0),
   quantity_before integer not null,
@@ -597,9 +602,19 @@ returns void
 language plpgsql
 security definer set search_path = ''
 as $$
+declare
+  team_qty integer;
 begin
   if not public.is_admin() then
     raise exception 'Only an administrator can delete inventory items';
+  end if;
+
+  select qty_in_stock into team_qty
+  from public.team_stock
+  where consumable_id = p_consumable_id and organization_id = public.current_org_id();
+
+  if team_qty is not null and team_qty > 0 then
+    raise exception 'This item still has % unit(s) in team stock - return or discard it there first', team_qty;
   end if;
 
   delete from public.consumables
@@ -608,9 +623,6 @@ begin
   if not found then
     raise exception 'Item not found';
   end if;
-exception
-  when foreign_key_violation then
-    raise exception 'Cannot delete item: write-offs or stock movements still reference it. Deactivate it first.';
 end;
 $$;
 

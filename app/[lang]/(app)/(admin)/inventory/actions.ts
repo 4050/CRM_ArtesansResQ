@@ -10,6 +10,7 @@ export interface ConsumableFormInput {
   name: string
   category: string
   unit: ConsumableUnit
+  source: string
   qty_minimum: number
   description: string
   is_active: boolean

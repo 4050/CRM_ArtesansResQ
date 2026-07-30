@@ -30,12 +30,17 @@ export type ConsumableUnit = 'pcs' | 'pair' | 'ml' | 'l' | 'g' | 'kg' | 'pack' |
 // column in the DB, so values outside this set are valid and just aren't translatable.
 export type ConsumableCategory = 'ppe' | 'dressings' | 'instruments' | 'solutions' | 'medications' | 'other'
 
+// Funding source the item was procured through — splits the main warehouse
+// into 3 tabs. Same free-text-in-DB convention as category/unit above.
+export type ConsumableSource = 'state_procurement' | 'charity' | 'other'
+
 export interface Consumable {
   id: string
   code: string | null
   name: string
   category: string
   unit: ConsumableUnit
+  source: string
   qty_in_stock: number
   qty_minimum: number
   description: string | null
@@ -60,7 +65,9 @@ export interface Call {
 export interface Writeoff {
   id: string
   call_id: string
-  consumable_id: string
+  // Nullable since delete_consumable can fully delete a referenced item -
+  // see supabase/migrations/202607230001_allow_consumable_delete_with_history.sql.
+  consumable_id: string | null
   quantity: number
   created_at: string
   consumable?: Consumable
@@ -75,14 +82,16 @@ export type StockMovementType = 'opening_balance' | 'increase' | 'decrease'
 
 export interface StockMovement {
   id: string
-  consumable_id: string
+  // Nullable since delete_consumable can fully delete a referenced item -
+  // see supabase/migrations/202607230001_allow_consumable_delete_with_history.sql.
+  consumable_id: string | null
   movement_type: StockMovementType
   quantity_delta: number
   quantity_before: number
   quantity_after: number
   user_id: string | null
   created_at: string
-  consumable?: Pick<Consumable, 'name' | 'unit' | 'category'>
+  consumable?: Pick<Consumable, 'name' | 'unit' | 'category' | 'source'>
   user?: Pick<User, 'name'> | null
 }
 

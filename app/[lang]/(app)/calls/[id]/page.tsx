@@ -35,7 +35,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
   const writeoffs = (call.writeoffs ?? []) as {
     id: string
     quantity: number
-    consumable_id: string
+    consumable_id: string | null
     consumable: { name: string; unit: string; category: string } | null
   }[]
 

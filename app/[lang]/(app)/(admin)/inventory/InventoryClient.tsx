@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2, Ban } from 'lucide-react'
 import {
   createConsumableAction,
@@ -12,9 +13,10 @@ import {
 } from './actions'
 import type { Consumable, ConsumableUnit } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
-import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
+import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
+import { cn } from '@/lib/utils'
 
 interface Props {
   lang: Locale
@@ -28,13 +30,27 @@ const emptyForm = {
   name: '',
   category: 'other' as string,
   unit: 'pcs' as ConsumableUnit,
+  source: 'other' as string,
   qty_in_stock: 0,
   qty_minimum: 0,
   description: '',
   is_active: true,
 }
 
+const ALL_SOURCES = 'all'
+
 type ModalMode = 'edit' | 'add' | 'restock' | 'deactivate' | 'delete' | 'issue' | null
+
+// delete_consumable refuses (with this exact message - see
+// supabase/schema.sql) while the team is still holding any stock of the
+// item, since that can't be deleted away silently. Write-offs/stock
+// movements no longer block a delete at all - their consumable_id just
+// gets nulled out and the historical row is kept - so this is the only
+// failure mode worth a dedicated hint. Matched loosely since the app never
+// translates RPC error text.
+function deleteBlockedByTeamStock(error: string): boolean {
+  return error.includes('in team stock')
+}
 
 export default function InventoryClient({ lang, dict, consumables: initial, isAdmin }: Props) {
   const [consumables, setConsumables] = useState(initial)
@@ -46,8 +62,15 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const [sourceTab, setSourceTab] = useState<string>(ALL_SOURCES)
 
   const visibleConsumables = consumables.filter(c => c.is_active || showInactive)
+  const tabConsumables = sourceTab === ALL_SOURCES
+    ? visibleConsumables
+    : visibleConsumables.filter(c => c.source === sourceTab)
+  const sourceCounts = Object.fromEntries(
+    CONSUMABLE_SOURCES.map(src => [src, visibleConsumables.filter(c => c.source === src).length])
+  )
 
   function openEdit(c: Consumable) {
     setTarget(c)
@@ -56,6 +79,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
       name: c.name,
       category: c.category,
       unit: c.unit,
+      source: c.source,
       qty_in_stock: c.qty_in_stock,
       qty_minimum: c.qty_minimum,
       description: c.description ?? '',
@@ -109,6 +133,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         name: payload.name,
         category: payload.category,
         unit: payload.unit,
+        source: payload.source,
         qty_minimum: payload.qty_minimum,
         description: payload.description,
         is_active: payload.is_active,
@@ -262,9 +287,29 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
         </div>
       </div>
 
+      <div className="flex items-center gap-1 border-b border-slate-200">
+        {[ALL_SOURCES, ...CONSUMABLE_SOURCES].map(src => (
+          <button
+            key={src}
+            onClick={() => setSourceTab(src)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+              sourceTab === src
+                ? 'border-red-600 text-red-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            )}
+          >
+            {src === ALL_SOURCES ? dict.inventory.allSources : sourceLabel(dict, src)}
+            <span className="ml-1.5 text-xs text-slate-400">
+              {src === ALL_SOURCES ? visibleConsumables.length : sourceCounts[src]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <StockTable
         dict={dict}
-        items={visibleConsumables}
+        items={tabConsumables}
         labels={{
           searchPlaceholder: dict.inventory.searchPlaceholder,
           allCategories: dict.inventory.allCategories,
@@ -354,9 +399,29 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
             <span>{dict.inventory.deleteWarning}</span>
           </div>
           {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.inventory.error}: {saveError}
-            </div>
+            // delete_consumable refuses while the team still holds stock of
+            // this item - expected and recoverable, not a failure to just
+            // dump as raw text, so it gets its own box with a shortcut to
+            // where the admin actually needs to act (team stock isn't
+            // manageable from this modal/page).
+            deleteBlockedByTeamStock(saveError) ? (
+              <div className="flex flex-col gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{dict.inventory.deleteBlockedByTeamStockHint}</span>
+                </div>
+                <Link
+                  href={`/${lang}/team-stock`}
+                  className="self-start text-sm font-semibold text-amber-900 underline hover:no-underline"
+                >
+                  {dict.inventory.goToTeamStock}
+                </Link>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                {dict.inventory.error}: {saveError}
+              </div>
+            )
           )}
         </Modal>
       )}
@@ -541,6 +606,17 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.source}</label>
+                <select
+                  value={form.source}
+                  onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                >
+                  {CONSUMABLE_SOURCES.map(src => <option key={src} value={src}>{sourceLabel(dict, src)}</option>)}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -29,7 +29,7 @@ export default async function CallsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-900">{dict.calls.list.title}</h1>
         <Link
           href={`/${lang}/calls/new`}
@@ -88,8 +88,9 @@ export default async function CallsPage({
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        {calls && calls.length > 0 ? (
-          <table className="w-full">
+        {calls && calls.length > 0 ? (<>
+          {/* Desktop table */}
+          <table className="hidden md:table w-full">
             <thead>
               <tr className="text-xs text-slate-400 uppercase tracking-wide border-b border-slate-100">
                 <th className="text-left px-5 py-3">{dict.calls.list.callNumber}</th>
@@ -129,7 +130,26 @@ export default async function CallsPage({
               ))}
             </tbody>
           </table>
-        ) : (
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {calls.map((call) => (
+              <Link key={call.id} href={`/${lang}/calls/${call.id}`} className="block px-4 py-3 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-900">{call.call_number}</span>
+                  <span className="text-xs text-slate-400 shrink-0">{formatDateTime(call.date, lang)}</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{call.vehicle?.number ?? '—'}</span>
+                  <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">{call.bag?.number ?? '—'}</span>
+                  <span className="text-xs text-slate-400">{call.user?.name ?? '—'}</span>
+                </div>
+                {call.description && (
+                  <div className="text-xs text-slate-400 mt-1 truncate">{call.description}</div>
+                )}
+              </Link>
+            ))}
+          </div>
+        </>) : (
           <div className="px-5 py-16 text-center text-slate-400 text-sm">
             {dict.calls.list.noneFound}{' '}
             <Link href={`/${lang}/calls/new`} className="text-red-600 hover:text-red-700 font-medium">

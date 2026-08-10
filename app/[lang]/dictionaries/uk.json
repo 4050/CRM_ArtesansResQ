@@ -195,7 +195,19 @@
     "showInactive": "Показати неактивні",
     "status": "Статус",
     "statusActive": "Активна",
-    "statusInactive": "Неактивна"
+    "statusInactive": "Неактивна",
+    "import": "Імпорт з Excel",
+    "importTitle": "Імпорт з Excel",
+    "importPickFile": "Оберіть файл Excel (.xlsx)",
+    "importParsing": "Читання файлу…",
+    "importToCreate": "Нові позиції",
+    "importToRestock": "Існуючі позиції для поповнення",
+    "importErrors": "Рядки з помилками",
+    "importRow": "Рядок",
+    "importCurrentQty": "Зараз",
+    "importConfirm": "Підтвердити імпорт",
+    "importNoValidRows": "У файлі не знайдено жодного коректного рядка",
+    "importSummary": "{create} нов. поз., {restock} поз. на поповнення"
   },
   "vehicles": {
     "title": "Машини та сумки",

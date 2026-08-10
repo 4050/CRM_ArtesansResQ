@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2, Ban } from 'lucide-react'
+import { AlertTriangle, Edit2, Plus, PackagePlus, Send, Loader2, Trash2, Ban, FileSpreadsheet } from 'lucide-react'
 import {
   createConsumableAction,
   updateConsumableAction,
@@ -17,6 +17,7 @@ import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CAT
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
 import { cn } from '@/lib/utils'
+import ImportExcelModal from './ImportExcelModal'
 
 interface Props {
   lang: Locale
@@ -63,6 +64,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
   const [saveError, setSaveError] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [sourceTab, setSourceTab] = useState<string>(ALL_SOURCES)
+  const [showImport, setShowImport] = useState(false)
 
   const visibleConsumables = consumables.filter(c => c.is_active || showInactive)
   const tabConsumables = sourceTab === ALL_SOURCES
@@ -274,6 +276,15 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
               />
               {dict.inventory.showInactive}
             </label>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              {dict.inventory.import}
+            </button>
           )}
           {isAdmin && (
             <button
@@ -696,6 +707,21 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 </div>
               )}
         </Modal>
+      )}
+
+      {showImport && (
+        <ImportExcelModal
+          lang={lang}
+          dict={dict}
+          onClose={() => setShowImport(false)}
+          onImported={(created, restocked) => {
+            setConsumables(prev => {
+              const restockedIds = new Set(restocked.map(c => c.id))
+              const merged = prev.map(c => restockedIds.has(c.id) ? restocked.find(r => r.id === c.id)! : c)
+              return [...merged, ...created]
+            })
+          }}
+        />
       )}
     </div>
   )

@@ -195,7 +195,19 @@
     "showInactive": "Show inactive",
     "status": "Status",
     "statusActive": "Active",
-    "statusInactive": "Inactive"
+    "statusInactive": "Inactive",
+    "import": "Import from Excel",
+    "importTitle": "Import from Excel",
+    "importPickFile": "Choose an Excel file (.xlsx)",
+    "importParsing": "Reading file…",
+    "importToCreate": "New items",
+    "importToRestock": "Existing items to restock",
+    "importErrors": "Rows with problems",
+    "importRow": "Row",
+    "importCurrentQty": "Current",
+    "importConfirm": "Confirm import",
+    "importNoValidRows": "No valid rows found in the file",
+    "importSummary": "{create} new item(s), {restock} item(s) to restock"
   },
   "vehicles": {
     "title": "Vehicles & bags",

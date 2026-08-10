@@ -354,7 +354,13 @@
     "discardTitle": "Discard from team stock",
     "discardWarning": "This quantity is written off as lost, damaged, or expired — it will not be returned to the main warehouse.",
     "howMuchToDiscard": "How much to discard, {unit}",
-    "discard": "Discard"
+    "discard": "Discard",
+    "delete": "Delete",
+    "deleteFromTeamStock": "Remove from team stock",
+    "deleteDisabledHint": "Return or discard the remaining stock first",
+    "deleteTitle": "Remove item from team stock?",
+    "deleteWarning": "The item will be permanently removed from the team stock list. If it's issued to the team again from the main warehouse, it will reappear.",
+    "deleteForever": "Delete permanently"
   },
   "users": {
     "title": "Users",

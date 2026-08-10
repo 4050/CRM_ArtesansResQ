@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Undo2, Trash2, Loader2, AlertTriangle } from 'lucide-react'
+import { Undo2, Trash2, Ban, Loader2, AlertTriangle } from 'lucide-react'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { TeamStockRow } from '@/lib/data/team-stock'
 import { unitLabel } from '@/lib/consumable-labels'
 import StockTable, { type StockItem } from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
-import { returnFromTeamStockAction, discardFromTeamStockAction } from './actions'
+import { returnFromTeamStockAction, discardFromTeamStockAction, deleteTeamStockItemAction } from './actions'
 
 interface Props {
   lang: Locale
@@ -17,7 +17,7 @@ interface Props {
 }
 
 type TeamStockItem = StockItem & { consumableId: string }
-type ActionMode = 'return' | 'discard' | null
+type ActionMode = 'return' | 'discard' | 'delete' | null
 
 function toStockItem(row: TeamStockRow): TeamStockItem {
   return {
@@ -58,6 +58,12 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
     setSaveError('')
   }
 
+  function openDelete(item: TeamStockItem) {
+    setTarget(item)
+    setMode('delete')
+    setSaveError('')
+  }
+
   function closeModal() {
     setTarget(null)
     setMode(null)
@@ -65,9 +71,23 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
   }
 
   async function handleConfirm() {
-    if (!target || qty <= 0) return
+    if (!target) return
+    if (mode !== 'delete' && qty <= 0) return
     setSaving(true)
     setSaveError('')
+
+    if (mode === 'delete') {
+      const { error } = await deleteTeamStockItemAction(lang, target.consumableId)
+      if (error) {
+        setSaveError(error)
+        setSaving(false)
+        return
+      }
+      setItems(prev => prev.filter(row => row.id !== target.id))
+      setSaving(false)
+      closeModal()
+      return
+    }
 
     const { error } = mode === 'discard'
       ? await discardFromTeamStockAction(lang, target.consumableId, qty)
@@ -103,6 +123,14 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
+        <button
+          onClick={() => openDelete(item)}
+          title={item.qty_in_stock > 0 ? dict.teamStock.deleteDisabledHint : dict.teamStock.deleteFromTeamStock}
+          disabled={item.qty_in_stock > 0}
+          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors"
+        >
+          <Ban className="w-3.5 h-3.5" />
+        </button>
       </>
     )
   }
@@ -115,6 +143,9 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
         </button>
         <button onClick={() => openDiscard(item)} disabled={item.qty_in_stock <= 0} className="p-1.5 text-red-600 bg-red-50 rounded-lg disabled:opacity-30">
           <Trash2 className="w-4 h-4" />
+        </button>
+        <button onClick={() => openDelete(item)} disabled={item.qty_in_stock > 0} className="p-1.5 text-red-600 bg-red-50 rounded-lg disabled:opacity-30">
+          <Ban className="w-4 h-4" />
         </button>
       </>
     )
@@ -159,7 +190,7 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
       />
 
       {/* Return to main warehouse / discard modal */}
-      {target && mode && (
+      {target && (mode === 'return' || mode === 'discard') && (
         <Modal
           title={mode === 'discard' ? dict.teamStock.discardTitle : dict.teamStock.returnTitle}
           onClose={closeModal}
@@ -233,6 +264,46 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
               {dict.teamStock.teamWillBecome}: <span className="font-bold">{target.qty_in_stock - qty} {unitLabel(dict, target.unit)}</span>
             </div>
           )}
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              {dict.teamStock.error}: {saveError}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* Delete-from-team-stock confirmation - only reachable once qty_in_stock is 0 (see renderRowActions/renderCardActions) */}
+      {target && mode === 'delete' && (
+        <Modal
+          title={dict.teamStock.deleteTitle}
+          onClose={closeModal}
+          closeDisabled={saving}
+          footer={<>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {dict.teamStock.cancel}
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={saving}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              {dict.teamStock.deleteForever}
+            </button>
+          </>}
+        >
+          <div className="bg-slate-50 rounded-lg px-4 py-3">
+            <div className="text-sm font-medium text-slate-900">{target.name}</div>
+            <div className="text-xs text-slate-500 mt-1">{dict.teamStock.currentTeamStock}: {target.qty_in_stock} {unitLabel(dict, target.unit)}</div>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{dict.teamStock.deleteWarning}</span>
+          </div>
           {saveError && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
               {dict.teamStock.error}: {saveError}

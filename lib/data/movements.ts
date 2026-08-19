@@ -80,13 +80,15 @@ export async function getStockMovements(filters: MovementListFilters = {}): Prom
   if (filters.toIso) query = query.lte('created_at', filters.toIso)
 
   if (filters.source) {
-    const { data: matches } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    const { data: matches, error: sourceError } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    if (sourceError) throw new Error(sourceError.message)
     const ids = (matches ?? []).map(c => c.id)
     if (ids.length === 0) return { rows: [], count: 0, page, pageSize }
     query = query.in('consumable_id', ids)
   }
 
-  const { data, count } = await query
+  const { data, count, error } = await query
+  if (error) throw new Error(error.message)
   return {
     rows: z.array(movementRowSchema).parse(data ?? []),
     count: count ?? 0,

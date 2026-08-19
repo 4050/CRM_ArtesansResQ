@@ -25,9 +25,10 @@ export type TeamStockRow = z.infer<typeof teamStockRowSchema>
 // it, so an un-issued consumable simply never appears.
 export async function getTeamStock({ includeInactive = false } = {}): Promise<TeamStockRow[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('team_stock')
     .select('id, consumable_id, qty_in_stock, consumable:consumables(code, name, category, unit, qty_minimum, is_active)')
+  if (error) throw new Error(error.message)
 
   const rows = z.array(teamStockRowSchema).parse(data ?? [])
   return rows

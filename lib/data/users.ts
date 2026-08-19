@@ -16,22 +16,28 @@ export interface OrgMember {
 
 export async function getUserOptions(): Promise<{ id: string; name: string }[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('users').select('id, name').order('name')
+  const { data, error } = await supabase.from('users').select('id, name').order('name')
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export async function getOrgMembers(): Promise<OrgMember[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('users').select('id, name, role').order('name')
+  const { data, error } = await supabase.from('users').select('id, name, role').order('name')
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export const getProfile = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('users')
     .select('name, role, organization_id')
     .eq('id', userId)
     .single()
+  // PGRST116 ("no rows") is a legitimate "no profile yet" case callers
+  // already handle by falling back to defaults - only a real DB error
+  // should throw.
+  if (error && error.code !== 'PGRST116') throw new Error(error.message)
   return data
 })

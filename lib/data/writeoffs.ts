@@ -87,22 +87,25 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
   if (filters.userId) query = query.eq('user_id', filters.userId)
 
   if (filters.source) {
-    const { data: matches } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    const { data: matches, error: sourceError } = await supabase.from('consumables').select('id').eq('source', filters.source)
+    if (sourceError) throw new Error(sourceError.message)
     const ids = (matches ?? []).map(c => c.id)
     if (ids.length === 0) return { rows: [], count: 0, page, pageSize }
     query = query.in('consumable_id', ids)
   }
 
-  const { data, count } = await query
+  const { data, count, error } = await query
+  if (error) throw new Error(error.message)
   return { rows: z.array(writeoffRowSchema).parse(data ?? []), count: count ?? 0, page, pageSize }
 }
 
 export async function getWriteoffsSince(isoDate: string): Promise<{ quantity: number }[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('writeoffs')
     .select('quantity')
     .gte('created_at', isoDate)
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 

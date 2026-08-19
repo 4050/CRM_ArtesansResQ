@@ -28,21 +28,18 @@ export default async function ReportsPage({
   const toDate = new Date(`${to}T23:59:59.999`)
   const validRange = !Number.isNaN(fromDate.getTime()) && !Number.isNaN(toDate.getTime()) && fromDate <= toDate
 
-  const rows = validRange
+  const report = validRange
     ? await getWriteoffsInRange(fromDate.toISOString(), toDate.toISOString())
-    : []
+    : { operations: 0, totalQuantity: 0, employees: 0, byConsumable: [] }
 
-  const totalQuantity = rows.reduce((sum, row) => sum + row.quantity, 0)
-  const employees = new Set(rows.map(row => row.user?.name).filter(Boolean)).size
-  const byConsumable = Object.values(rows.reduce<Record<string, { name: string; unit: string; category: string; source: string; quantity: number }>>((acc, row) => {
-    const name = row.consumable?.name ?? dict.reports.deletedItem
-    const category = row.consumable?.category ?? 'other'
-    const source = row.consumable?.source ?? 'other'
-    const key = `${category}:${source}:${name}`
-    if (!acc[key]) acc[key] = { name, unit: row.consumable?.unit ?? 'pcs', category, source, quantity: 0 }
-    acc[key].quantity += row.quantity
-    return acc
-  }, {})).sort((a, b) => b.quantity - a.quantity)
+  const { operations, totalQuantity, employees } = report
+  const byConsumable = report.byConsumable.map(item => ({
+    name: item.name ?? dict.reports.deletedItem,
+    unit: item.unit ?? 'pcs',
+    category: item.category ?? 'other',
+    source: item.source ?? 'other',
+    quantity: item.quantity,
+  }))
 
   return (
     <div className="space-y-6">
@@ -66,7 +63,7 @@ export default async function ReportsPage({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: dict.reports.writeoffOperations, value: rows.length, icon: CalendarDays, bgClass: 'bg-blue-100', iconClass: 'text-blue-600' },
+          { label: dict.reports.writeoffOperations, value: operations, icon: CalendarDays, bgClass: 'bg-blue-100', iconClass: 'text-blue-600' },
           { label: dict.reports.unitsWrittenOff, value: totalQuantity, icon: Package, bgClass: 'bg-green-100', iconClass: 'text-green-600' },
           { label: dict.reports.employees, value: employees, icon: Users, bgClass: 'bg-purple-100', iconClass: 'text-purple-600' },
         ].map(({ label, value, icon: Icon, bgClass, iconClass }) => (

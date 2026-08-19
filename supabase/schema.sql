@@ -986,3 +986,37 @@ revoke all on function public.delete_call_with_writeoffs(uuid) from public;
 grant execute on function public.create_call_with_writeoffs(timestamptz, text, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.update_call_with_writeoffs(uuid, timestamptz, text, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.delete_call_with_writeoffs(uuid) to authenticated;
+
+-- Aggregates the write-offs report (totals + per-item breakdown) in SQL so
+-- it covers every matching row for the selected range, not just however
+-- many the client happened to fetch - see 202608190002.
+create or replace function public.writeoffs_report(p_from timestamptz, p_to timestamptz)
+returns jsonb
+language sql
+stable
+set search_path = ''
+as $$
+  with scoped as (
+    select w.quantity, w.user_id, c.name, c.unit, c.category, c.source
+    from public.writeoffs w
+    left join public.consumables c on c.id = w.consumable_id
+    where w.organization_id = public.current_org_id()
+      and w.created_at >= p_from
+      and w.created_at <= p_to
+  ),
+  breakdown as (
+    select name, unit, category, source, sum(quantity)::bigint as quantity
+    from scoped
+    group by name, unit, category, source
+    order by sum(quantity) desc
+  )
+  select jsonb_build_object(
+    'operations', (select count(*) from scoped),
+    'totalQuantity', (select coalesce(sum(quantity), 0) from scoped),
+    'employees', (select count(distinct user_id) from scoped),
+    'byConsumable', (select coalesce(jsonb_agg(to_jsonb(breakdown)), '[]'::jsonb) from breakdown)
+  );
+$$;
+
+revoke all on function public.writeoffs_report(timestamptz, timestamptz) from public;
+grant execute on function public.writeoffs_report(timestamptz, timestamptz) to authenticated;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDate, formatDateTime, isLowStock } from './utils'
+import { cn, toBCP47, formatDate, formatDateTime, isLowStock, clampQuantityInput } from './utils'
 
 describe('cn', () => {
   it('merges classes and resolves Tailwind conflicts', () => {
@@ -40,6 +40,27 @@ describe('formatDate / formatDateTime', () => {
     expect(formatDate(sample, 'uk')).toBe(new Date(sample).toLocaleDateString('uk-UA', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     }))
+  })
+})
+
+describe('clampQuantityInput', () => {
+  // Regression test: a plain `Math.max(1, Number(raw))` in NewCallForm/
+  // EditCallForm/ConsumablePicker let a partially-typed number input reach
+  // NaN, which then silently defeated the over-stock check downstream
+  // (every comparison against NaN is false).
+  it('parses a normal numeric string', () => {
+    expect(clampQuantityInput('5')).toBe(5)
+  })
+
+  it('clamps below-minimum values up to 1', () => {
+    expect(clampQuantityInput('0')).toBe(1)
+    expect(clampQuantityInput('-3')).toBe(1)
+  })
+
+  it('falls back to 1 for values that parse to NaN', () => {
+    expect(clampQuantityInput('')).toBe(1)
+    expect(clampQuantityInput('-')).toBe(1)
+    expect(clampQuantityInput('abc')).toBe(1)
   })
 })
 

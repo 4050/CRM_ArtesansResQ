@@ -40,3 +40,15 @@ export function isLowStock(qty: number, min: number): boolean {
 export function computeTotalPages(count: number, pageSize: number): number {
   return Math.max(1, Math.ceil(count / pageSize))
 }
+
+// Clamps a `<input type="number" min="1">` onChange value to a valid
+// quantity. A partially-typed value (empty, "-", scientific notation
+// mid-entry) makes Number(raw) NaN, and Math.max(1, NaN) is NaN - which
+// then silently defeats any `quantity > qty_in_stock` over-stock check
+// downstream, since every comparison against NaN is false. Falls back to
+// 1 rather than the previous value so a cleared field doesn't leave a
+// stale number in place.
+export function clampQuantityInput(raw: string): number {
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.max(1, n) : 1
+}

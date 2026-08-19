@@ -8,7 +8,7 @@ import type { Vehicle, Bag, WriteoffInput } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn } from '@/lib/utils'
+import { cn, clampQuantityInput } from '@/lib/utils'
 import ConsumablePicker from '@/components/calls/ConsumablePicker'
 
 type ExistingWriteoff = {
@@ -60,6 +60,11 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
     return { ...base, qty_in_stock: base.qty_in_stock + (original?.quantity ?? 0) }
   }
 
+  const hasOverStockRow = writeoffs.some(w => {
+    const c = getConsumable(w.consumable_id)
+    return c && w.quantity > c.qty_in_stock
+  })
+
   function updateQuantity(idx: number, quantity: number) {
     setWriteoffs(prev => prev.map((w, i) => i === idx ? { ...w, quantity } : w))
   }
@@ -79,6 +84,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
 
     if (!vehicleId) { setError(dict.calls.form.selectVehicleError); return }
     if (!bagId) { setError(dict.calls.form.selectBagError); return }
+    if (hasOverStockRow) { setError(dict.calls.form.overStockError); return }
 
     const parsed = new Date(`${date}T${time}`)
     if (isNaN(parsed.getTime())) { setError(dict.calls.form.invalidDateTime); return }
@@ -195,7 +201,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
                       <button type="button" onClick={() => updateQuantity(idx, Math.max(1, w.quantity - 1))}
                         className="w-7 h-7 rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-base">−</button>
                       <input type="number" min="1" value={w.quantity}
-                        onChange={e => updateQuantity(idx, Math.max(1, Number(e.target.value)))}
+                        onChange={e => updateQuantity(idx, clampQuantityInput(e.target.value))}
                         className={cn('w-14 text-center text-sm font-semibold border rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-red-500',
                           overStock ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300 bg-white')} />
                       <button type="button" onClick={() => updateQuantity(idx, w.quantity + 1)}
@@ -229,7 +235,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
             className="px-6 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">
             {dict.calls.form.cancel}
           </button>
-          <button type="submit" disabled={saving}
+          <button type="submit" disabled={saving || hasOverStockRow}
             className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {dict.calls.form.saveChanges}

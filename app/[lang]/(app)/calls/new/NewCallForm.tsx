@@ -8,7 +8,7 @@ import type { Vehicle, Bag, WriteoffInput } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn } from '@/lib/utils'
+import { cn, clampQuantityInput } from '@/lib/utils'
 import ConsumablePicker from '@/components/calls/ConsumablePicker'
 
 interface Props {
@@ -42,6 +42,10 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
   }
 
   const usedIds = writeoffs.map(w => w.consumable_id)
+  const hasOverStockRow = writeoffs.some(w => {
+    const c = getConsumable(w.consumable_id)
+    return c && w.quantity > c.qty_in_stock
+  })
 
   function handlePickerAdd(consumable_id: string, quantity: number) {
     setWriteoffs(prev => [...prev, { consumable_id, quantity }])
@@ -62,6 +66,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
 
     if (!vehicleId) { setError(dict.calls.form.selectVehicleError); return }
     if (!bagId) { setError(dict.calls.form.selectBagError); return }
+    if (hasOverStockRow) { setError(dict.calls.form.overStockError); return }
 
     const validWriteoffs = writeoffs.filter(w => w.consumable_id && w.quantity > 0)
 
@@ -227,7 +232,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
                         type="number"
                         min="1"
                         value={w.quantity}
-                        onChange={e => updateQuantity(idx, Math.max(1, Number(e.target.value)))}
+                        onChange={e => updateQuantity(idx, clampQuantityInput(e.target.value))}
                         className={cn(
                           'w-14 text-center text-sm font-semibold border rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-red-500',
                           overStock ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300 bg-white'
@@ -283,7 +288,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || hasOverStockRow}
             className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}

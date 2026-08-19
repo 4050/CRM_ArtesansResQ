@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
+const DEFAULT_PAGE_SIZE = 50
+
 export interface WriteoffListFilters {
   consumableId?: string
   userId?: string
@@ -9,6 +11,8 @@ export interface WriteoffListFilters {
   // write-off), so this is resolved to a set of consumable ids up front -
   // see the same tradeoff explained in lib/data/movements.ts.
   source?: string
+  page?: number
+  pageSize?: number
 }
 
 // Runtime boundary check - see the comment in lib/data/movements.ts for why
@@ -44,8 +48,20 @@ const writeoffSummaryRowSchema = z.object({
 
 export type WriteoffSummaryRow = z.infer<typeof writeoffSummaryRowSchema>
 
-export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<WriteoffRow[]> {
+export interface WriteoffListPage {
+  rows: WriteoffRow[]
+  count: number
+  page: number
+  pageSize: number
+}
+
+export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<WriteoffListPage> {
   const supabase = await createClient()
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   let query = supabase
     .from('writeoffs')
     .select(`
@@ -53,9 +69,9 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
       consumable:consumables(name, unit, category, source),
       user:users(name),
       call:calls(call_number, date, vehicle:vehicles(number), bag:bags(number))
-    `)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(200)
+    .range(from, to)
 
   if (filters.consumableId) query = query.eq('consumable_id', filters.consumableId)
   if (filters.userId) query = query.eq('user_id', filters.userId)
@@ -63,12 +79,12 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
   if (filters.source) {
     const { data: matches } = await supabase.from('consumables').select('id').eq('source', filters.source)
     const ids = (matches ?? []).map(c => c.id)
-    if (ids.length === 0) return []
+    if (ids.length === 0) return { rows: [], count: 0, page, pageSize }
     query = query.in('consumable_id', ids)
   }
 
-  const { data } = await query
-  return z.array(writeoffRowSchema).parse(data ?? [])
+  const { data, count } = await query
+  return { rows: z.array(writeoffRowSchema).parse(data ?? []), count: count ?? 0, page, pageSize }
 }
 
 export async function getWriteoffsSince(isoDate: string): Promise<{ quantity: number }[]> {

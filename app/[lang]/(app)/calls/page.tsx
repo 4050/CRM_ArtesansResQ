@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatDateTime, computeTotalPages } from '@/lib/utils'
 import { getCalls } from '@/lib/data/calls'
 import { getActiveVehicles } from '@/lib/data/vehicles'
 import { getBags } from '@/lib/data/bags'
@@ -8,24 +8,42 @@ import { getUserOptions } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 
+type CallsSearchParams = { vehicle?: string; bag?: string; user?: string; page?: string }
+
+// Preserves every active filter while only changing the page number.
+function pageHref(lang: string, sp: CallsSearchParams, page: number) {
+  const params = new URLSearchParams()
+  if (sp.vehicle) params.set('vehicle', sp.vehicle)
+  if (sp.bag) params.set('bag', sp.bag)
+  if (sp.user) params.set('user', sp.user)
+  if (page > 1) params.set('page', String(page))
+  const qs = params.toString()
+  return `/${lang}/calls${qs ? `?${qs}` : ''}`
+}
+
 export default async function CallsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>
-  searchParams: Promise<{ vehicle?: string; bag?: string; user?: string }>
+  searchParams: Promise<CallsSearchParams>
 }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
   const sp = await searchParams
+  const page = Math.max(1, Number(sp.page) || 1)
 
-  const [calls, vehicles, bags, users] = await Promise.all([
-    getCalls({ vehicleId: sp.vehicle, bagId: sp.bag, userId: sp.user }),
+  const [{ rows: calls, count, pageSize }, vehicles, bags, users] = await Promise.all([
+    getCalls({ vehicleId: sp.vehicle, bagId: sp.bag, userId: sp.user, page }),
     getActiveVehicles(),
     getBags(),
     getUserOptions(),
   ])
+
+  const totalPages = computeTotalPages(count, pageSize)
+  const rangeFrom = count === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeTo = Math.min(count, page * pageSize)
 
   return (
     <div className="space-y-6">
@@ -157,8 +175,39 @@ export default async function CallsPage({
             </Link>
           </div>
         )}
-        <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">
-          {dict.calls.list.found}: {calls?.length ?? 0}
+        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-400">
+            {dict.calls.list.shownRange
+              .replace('{from}', String(rangeFrom))
+              .replace('{to}', String(rangeTo))
+              .replace('{total}', String(count))}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              {page > 1 ? (
+                <Link href={pageHref(lang, sp, page - 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.calls.list.prevPage}
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.calls.list.prevPage}
+                </span>
+              )}
+              {page < totalPages ? (
+                <Link href={pageHref(lang, sp, page + 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  {dict.calls.list.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  {dict.calls.list.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

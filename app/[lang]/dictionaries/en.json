@@ -91,7 +91,9 @@
     "noneFound": "No write-offs found.",
     "createCall": "Create a call →",
     "call": "call →",
-    "found": "Found"
+    "shownRange": "Showing {from}–{to} of {total}",
+    "prevPage": "Previous",
+    "nextPage": "Next"
   },
   "movements": {
     "title": "Stock movements",
@@ -273,7 +275,9 @@
       "open": "Open →",
       "noneFound": "No calls found.",
       "createFirst": "Create the first one →",
-      "found": "Found"
+      "shownRange": "Showing {from}–{to} of {total}",
+      "prevPage": "Previous",
+      "nextPage": "Next"
     },
     "detail": {
       "title": "Call details",

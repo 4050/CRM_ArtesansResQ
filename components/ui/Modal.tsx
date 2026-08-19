@@ -22,11 +22,26 @@ export default function Modal({ title, onClose, closeDisabled, maxWidth = 'max-w
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
 
+  // onClose/closeDisabled are read through refs, not effect deps - every
+  // keystroke in a form field re-renders the parent with a new `onClose`
+  // function identity, and putting that in the deps array reran this
+  // effect on every keystroke, stealing focus back to the dialog's first
+  // focusable element (the X button) mid-typing. Refs are updated in their
+  // own effect (not directly during render, which React disallows) so
+  // they're always current by the time a keydown handler reads them.
+  const onCloseRef = useRef(onClose)
+  const closeDisabledRef = useRef(closeDisabled)
+  useEffect(() => {
+    onCloseRef.current = onClose
+    closeDisabledRef.current = closeDisabled
+  })
+
   // Every CRUD/confirmation flow in the app goes through this component, so
   // it needs to behave like a real dialog for keyboard/screen-reader users:
   // focus moves in on open and back out on close, Escape closes it (unless
   // an action is in flight, matching the X button's own disabled state),
-  // and Tab can't escape to the page behind the overlay.
+  // and Tab can't escape to the page behind the overlay. Runs once per
+  // mount/unmount (i.e. once per open/close), not on every re-render.
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -36,7 +51,7 @@ export default function Modal({ title, onClose, closeDisabled, maxWidth = 'max-w
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (!closeDisabled) onClose()
+        if (!closeDisabledRef.current) onCloseRef.current()
         return
       }
       if (e.key !== 'Tab' || !dialog) return
@@ -60,7 +75,7 @@ export default function Modal({ title, onClose, closeDisabled, maxWidth = 'max-w
       document.removeEventListener('keydown', handleKeyDown)
       previouslyFocused?.focus()
     }
-  }, [onClose, closeDisabled])
+  }, [])
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

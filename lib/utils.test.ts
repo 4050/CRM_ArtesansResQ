@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDate, formatDateTime, isLowStock } from './utils'
+import { cn, toBCP47, formatDate, formatDateTime, isLowStock, startOfDayIso } from './utils'
 
 describe('cn', () => {
   it('merges classes and resolves Tailwind conflicts', () => {
@@ -40,6 +40,33 @@ describe('formatDate / formatDateTime', () => {
     expect(formatDate(sample, 'uk')).toBe(new Date(sample).toLocaleDateString('uk-UA', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     }))
+  })
+})
+
+describe('startOfDayIso', () => {
+  // Regression test: the dashboard used to compute "today" via the
+  // server's local Date/setHours, which is wrong whenever the server's
+  // timezone (typically UTC in production) differs from the org's - this
+  // locks in that the boundary is actually computed in the given zone.
+
+  it('returns the zone-local midnight for a UTC instant already past local midnight (EEST, UTC+3)', () => {
+    // 2026-08-19T22:00:00Z is 2026-08-20T01:00 in Kyiv (summer, UTC+3) -
+    // already the next calendar day locally, though still Aug 19 in UTC.
+    const now = new Date('2026-08-19T22:00:00Z')
+    expect(startOfDayIso('Europe/Kyiv', now)).toBe('2026-08-19T21:00:00.000Z')
+  })
+
+  it('returns the zone-local midnight for a UTC instant during standard time (EET, UTC+2)', () => {
+    // 2026-01-15T22:30:00Z is 2026-01-16T00:30 in Kyiv (winter, UTC+2).
+    const now = new Date('2026-01-15T22:30:00Z')
+    expect(startOfDayIso('Europe/Kyiv', now)).toBe('2026-01-15T22:00:00.000Z')
+  })
+
+  it('returns the same local day\'s midnight for a mid-day instant', () => {
+    // 2026-06-15T10:00:00Z is 2026-06-15T13:00 in Kyiv (summer, UTC+3) -
+    // same calendar date in both, just a different hour.
+    const now = new Date('2026-06-15T10:00:00Z')
+    expect(startOfDayIso('Europe/Kyiv', now)).toBe('2026-06-14T21:00:00.000Z')
   })
 })
 

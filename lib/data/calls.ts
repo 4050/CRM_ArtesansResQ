@@ -49,13 +49,16 @@ export async function getCalls(filters: CallListFilters = {}): Promise<CallListP
   return { rows: data ?? [], count: count ?? 0, page, pageSize }
 }
 
-export async function getRecentCalls(limit: number) {
+export type RecentCallRow = Omit<CallListRow, 'description'>
+
+export async function getRecentCalls(limit: number): Promise<RecentCallRow[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('calls')
     .select('id, call_number, date, vehicle:vehicles(number), bag:bags(number), user:users(name)')
     .order('date', { ascending: false })
     .limit(limit)
+    .returns<RecentCallRow[]>()
   if (error) throw new Error(error.message)
   return data ?? []
 }

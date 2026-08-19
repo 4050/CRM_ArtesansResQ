@@ -12,15 +12,6 @@ import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 
-type CallRow = {
-  id: string
-  call_number: string | null
-  date: string
-  vehicle: { number: string } | null
-  bag: { number: string } | null
-  user: { name: string } | null
-}
-
 export default async function DashboardPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
@@ -157,7 +148,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {(recentCalls as unknown as CallRow[]).map((call) => (
+              {recentCalls.map((call) => (
                 <tr key={call.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-3 text-sm text-slate-600">{formatDateTime(call.date, lang)}</td>
                   <td className="px-5 py-3">
@@ -180,7 +171,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
           </table>
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-slate-100">
-            {(recentCalls as unknown as CallRow[]).map((call) => (
+            {recentCalls.map((call) => (
               <Link key={call.id} href={`/${lang}/calls/${call.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                 <div>
                   <div className="text-sm font-medium text-slate-800">{formatDateTime(call.date, lang)}</div>

@@ -30,14 +30,29 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Skip auth check if Supabase is not configured yet
-  if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url') {
+  if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url' || !supabaseKey) {
+    // Local dev before .env.local is filled in: let requests through
+    // unauthenticated rather than redirect-looping on every page.
+    //
+    // In production a missing/placeholder env var is a deploy
+    // misconfiguration, not an expected state - failing open here would
+    // serve every page with zero auth enforcement. Fail closed instead:
+    // treat it the same as "not authenticated".
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.next({ request })
+    }
+
+    const rest = pathname.slice(`/${pathnameLocale}`.length) || '/'
+    const isPublic = rest === '/login' || rest === '/'
+    if (!isPublic) {
+      return NextResponse.redirect(new URL(`/${pathnameLocale}/login`, request.url))
+    }
     return NextResponse.next({ request })
   }
 
   let supabaseResponse = NextResponse.next({ request })
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey!, {
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll()

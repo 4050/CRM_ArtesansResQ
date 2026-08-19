@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatDateTime, computeTotalPages } from '@/lib/utils'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import { getWriteoffs } from '@/lib/data/writeoffs'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
@@ -8,24 +8,42 @@ import { getUserOptions } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
 
+type WriteoffsSearchParams = { consumable?: string; user?: string; source?: string; page?: string }
+
+// Preserves every active filter while only changing the page number.
+function pageHref(lang: string, sp: WriteoffsSearchParams, page: number) {
+  const params = new URLSearchParams()
+  if (sp.consumable) params.set('consumable', sp.consumable)
+  if (sp.user) params.set('user', sp.user)
+  if (sp.source) params.set('source', sp.source)
+  if (page > 1) params.set('page', String(page))
+  const qs = params.toString()
+  return `/${lang}/writeoffs${qs ? `?${qs}` : ''}`
+}
+
 export default async function WriteoffsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>
-  searchParams: Promise<{ consumable?: string; user?: string; source?: string }>
+  searchParams: Promise<WriteoffsSearchParams>
 }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
   const sp = await searchParams
   const source = sp.source && (CONSUMABLE_SOURCES as string[]).includes(sp.source) ? sp.source : undefined
+  const page = Math.max(1, Number(sp.page) || 1)
 
-  const [writeoffs, consumables, users] = await Promise.all([
-    getWriteoffs({ consumableId: sp.consumable, userId: sp.user, source }),
+  const [{ rows: writeoffs, count, pageSize }, consumables, users] = await Promise.all([
+    getWriteoffs({ consumableId: sp.consumable, userId: sp.user, source, page }),
     getConsumableNameOptions(),
     getUserOptions(),
   ])
+
+  const totalPages = computeTotalPages(count, pageSize)
+  const rangeFrom = count === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeTo = Math.min(count, page * pageSize)
 
   return (
     <div className="space-y-6">
@@ -188,8 +206,39 @@ export default async function WriteoffsPage({
             </Link>
           </div>
         )}
-        <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">
-          {dict.writeoffs.found}: {writeoffs?.length ?? 0}
+        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-400">
+            {dict.writeoffs.shownRange
+              .replace('{from}', String(rangeFrom))
+              .replace('{to}', String(rangeTo))
+              .replace('{total}', String(count))}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              {page > 1 ? (
+                <Link href={pageHref(lang, sp, page - 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.writeoffs.prevPage}
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {dict.writeoffs.prevPage}
+                </span>
+              )}
+              {page < totalPages ? (
+                <Link href={pageHref(lang, sp, page + 1)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  {dict.writeoffs.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                  {dict.writeoffs.nextPage}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

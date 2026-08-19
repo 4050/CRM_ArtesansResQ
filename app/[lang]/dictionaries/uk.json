@@ -91,7 +91,9 @@
     "noneFound": "Списань не знайдено.",
     "createCall": "Створити виклик →",
     "call": "виклик →",
-    "found": "Знайдено"
+    "shownRange": "Показано {from}–{to} з {total}",
+    "prevPage": "Попередня",
+    "nextPage": "Наступна"
   },
   "movements": {
     "title": "Рух складу",
@@ -269,7 +271,9 @@
       "open": "Відкрити →",
       "noneFound": "Викликів не знайдено.",
       "createFirst": "Створити перший →",
-      "found": "Знайдено"
+      "shownRange": "Показано {from}–{to} з {total}",
+      "prevPage": "Попередня",
+      "nextPage": "Наступна"
     },
     "detail": {
       "title": "Картка виклику",

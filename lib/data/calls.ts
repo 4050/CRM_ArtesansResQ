@@ -1,9 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 
+const DEFAULT_PAGE_SIZE = 50
+
 export interface CallListFilters {
   vehicleId?: string
   bagId?: string
   userId?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface CallListRow {
@@ -16,20 +20,32 @@ export interface CallListRow {
   user: { name: string } | null
 }
 
-export async function getCalls(filters: CallListFilters = {}): Promise<CallListRow[]> {
+export interface CallListPage {
+  rows: CallListRow[]
+  count: number
+  page: number
+  pageSize: number
+}
+
+export async function getCalls(filters: CallListFilters = {}): Promise<CallListPage> {
   const supabase = await createClient()
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   let query = supabase
     .from('calls')
-    .select('*, vehicle:vehicles(number), bag:bags(number), user:users(name)')
+    .select('*, vehicle:vehicles(number), bag:bags(number), user:users(name)', { count: 'exact' })
     .order('date', { ascending: false })
-    .limit(100)
+    .range(from, to)
 
   if (filters.vehicleId) query = query.eq('vehicle_id', filters.vehicleId)
   if (filters.bagId) query = query.eq('bag_id', filters.bagId)
   if (filters.userId) query = query.eq('user_id', filters.userId)
 
-  const { data } = await query
-  return data ?? []
+  const { data, count } = await query
+  return { rows: data ?? [], count: count ?? 0, page, pageSize }
 }
 
 export async function getRecentCalls(limit: number) {

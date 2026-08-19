@@ -36,13 +36,23 @@ const writeoffRowSchema = z.object({
 
 export type WriteoffRow = z.infer<typeof writeoffRowSchema>
 
-const writeoffSummaryRowSchema = z.object({
-  quantity: z.number(),
-  consumable: consumableSummarySchema,
-  user: userSummarySchema,
+const writeoffsReportSchema = z.object({
+  operations: z.number(),
+  totalQuantity: z.number(),
+  employees: z.number(),
+  byConsumable: z.array(z.object({
+    // null means every write-off in this bucket belonged to a since-deleted
+    // consumable (its category/source/unit are null for the same reason —
+    // see writeoffs_report's `left join`).
+    name: z.string().nullable(),
+    unit: z.string().nullable(),
+    category: z.string().nullable(),
+    source: z.string().nullable(),
+    quantity: z.number(),
+  })),
 })
 
-export type WriteoffSummaryRow = z.infer<typeof writeoffSummaryRowSchema>
+export type WriteoffsReport = z.infer<typeof writeoffsReportSchema>
 
 export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<WriteoffRow[]> {
   const supabase = await createClient()
@@ -80,14 +90,12 @@ export async function getWriteoffsSince(isoDate: string): Promise<{ quantity: nu
   return data ?? []
 }
 
-export async function getWriteoffsInRange(fromIso: string, toIso: string): Promise<WriteoffSummaryRow[]> {
+// Aggregated in SQL (writeoffs_report) rather than fetched as raw rows and
+// summed in JS - a date range wide enough to include more rows than a raw
+// fetch could reasonably cap at would otherwise silently under-count.
+export async function getWriteoffsInRange(fromIso: string, toIso: string): Promise<WriteoffsReport> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('writeoffs')
-    .select('quantity, consumable:consumables(name, unit, category, source), user:users(name)')
-    .gte('created_at', fromIso)
-    .lte('created_at', toIso)
-    .order('created_at', { ascending: false })
-    .limit(5000)
-  return z.array(writeoffSummaryRowSchema).parse(data ?? [])
+  const { data, error } = await supabase.rpc('writeoffs_report', { p_from: fromIso, p_to: toIso })
+  if (error) throw new Error(error.message)
+  return writeoffsReportSchema.parse(data)
 }

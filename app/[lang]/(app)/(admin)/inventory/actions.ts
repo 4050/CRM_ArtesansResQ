@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import type { Locale } from '@/app/[lang]/dictionaries'
+import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
+import { friendlyDbError } from '@/lib/action-errors'
 import type { Consumable, ConsumableUnit } from '@/types'
 
 export interface ConsumableFormInput {
@@ -25,7 +26,10 @@ type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; erro
 export async function createConsumableAction(lang: Locale, input: NewConsumableInput): Promise<ActionResult<Consumable>> {
   const supabase = await createClient()
   const { data, error } = await supabase.from('consumables').insert([input]).select().single()
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.inventory.duplicateCode) }
+  }
   revalidatePath(`/${lang}/inventory`)
   return { data }
 }
@@ -33,7 +37,10 @@ export async function createConsumableAction(lang: Locale, input: NewConsumableI
 export async function updateConsumableAction(lang: Locale, id: string, input: ConsumableFormInput): Promise<ActionResult<Consumable>> {
   const supabase = await createClient()
   const { data, error } = await supabase.from('consumables').update(input).eq('id', id).select().single()
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.inventory.duplicateCode) }
+  }
   revalidatePath(`/${lang}/inventory`)
   return { data }
 }

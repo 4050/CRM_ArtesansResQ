@@ -207,7 +207,8 @@
     "importCurrentQty": "Current",
     "importConfirm": "Confirm import",
     "importNoValidRows": "No valid rows found in the file",
-    "importSummary": "{create} new item(s), {restock} item(s) to restock"
+    "importSummary": "{create} new item(s), {restock} item(s) to restock",
+    "duplicateCode": "This code is already used by another item"
   },
   "vehicles": {
     "title": "Vehicles & bags",
@@ -250,7 +251,9 @@
     "deactivateBagTitle": "Deactivate bag?",
     "deactivateBagWarning": "The bag will disappear from the picker for new calls. Past call history is kept — you can bring it back via editing.",
     "deleteBagTitle": "Delete bag permanently?",
-    "deleteBagWarning": "The record will be permanently deleted with no way to undo. If calls still reference this bag, the deletion will fail — deactivate it first."
+    "deleteBagWarning": "The record will be permanently deleted with no way to undo. If calls still reference this bag, the deletion will fail — deactivate it first.",
+    "duplicateVehicleNumber": "This number is already used by another vehicle",
+    "duplicateBagNumber": "This number is already used by another bag"
   },
   "calls": {
     "list": {

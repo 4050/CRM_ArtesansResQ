@@ -82,7 +82,7 @@ create table public.writeoffs (
   -- on delete set null (not cascade): a deleted consumable's write-off
   -- history is kept, just orphaned - see 202607230001.
   consumable_id uuid references public.consumables(id) on delete set null,
-  quantity integer not null,
+  quantity integer not null check (quantity > 0),
   user_id uuid references public.users(id),
   organization_id uuid not null references public.organizations(id),
   created_at timestamptz default now()
@@ -228,9 +228,6 @@ create policy "Admins update consumables" on public.consumables
 
 create policy "Authenticated read calls" on public.calls
   for select to authenticated using (organization_id = public.current_org_id());
-create policy "Authenticated insert own calls" on public.calls
-  for insert to authenticated
-  with check (user_id = auth.uid() and organization_id = public.current_org_id());
 create policy "Owners or admins update calls" on public.calls
   for update to authenticated
   using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()))
@@ -241,9 +238,6 @@ create policy "Owners or admins delete calls" on public.calls
 
 create policy "Authenticated read writeoffs" on public.writeoffs
   for select to authenticated using (organization_id = public.current_org_id());
-create policy "Authenticated insert own writeoffs" on public.writeoffs
-  for insert to authenticated
-  with check (user_id = auth.uid() and organization_id = public.current_org_id());
 create policy "Owners or admins delete writeoffs" on public.writeoffs
   for delete to authenticated
   using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()));

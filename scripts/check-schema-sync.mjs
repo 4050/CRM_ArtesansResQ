@@ -43,6 +43,23 @@ function extractPolicies(text) {
   return map
 }
 
+// Migrations sometimes retire a policy outright (drop with no matching
+// re-create - e.g. moving a table to RPC-only writes) rather than redefine
+// it. A single ordered pass over create/drop policy statements, in the
+// order they actually appear, is what lets "the latest state wins" hold
+// for that case too - the same way a later `create or replace function`
+// naturally supersedes an earlier one.
+function extractPolicyEvents(text) {
+  const re = /create policy "([^"]+)" on public\.(\w+)[\s\S]*?;|drop policy if exists "([^"]+)" on public\.(\w+);/g
+  const events = []
+  let m
+  while ((m = re.exec(text))) {
+    if (m[1] !== undefined) events.push({ key: `${m[2]}::${m[1]}`, type: 'create', body: m[0] })
+    else events.push({ key: `${m[4]}::${m[3]}`, type: 'drop' })
+  }
+  return events
+}
+
 function extractTriggers(text) {
   const re = /create trigger (\w+)[\s\S]*?;/g
   const map = new Map()
@@ -83,7 +100,9 @@ function main() {
   for (const file of migrationFiles) {
     const text = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8')
     for (const [name, body] of extractFunctions(text)) migFunctions.set(name, { body, file })
-    for (const [key, body] of extractPolicies(text)) migPolicies.set(key, { body, file })
+    for (const event of extractPolicyEvents(text)) {
+      migPolicies.set(event.key, event.type === 'drop' ? { dropped: true, file } : { body: event.body, file })
+    }
     for (const [name, body] of extractTriggers(text)) migTriggers.set(name, { body, file })
     for (const { table, column } of extractColumnAdds(text)) columnAdds.push({ table, column, file })
   }
@@ -99,8 +118,15 @@ function main() {
     }
   }
 
-  for (const [key, { body, file }] of migPolicies) {
+  for (const [key, entry] of migPolicies) {
     const schemaBody = schemaPolicies.get(key)
+    if (entry.dropped) {
+      if (schemaBody) {
+        problems.push(`policy ${key} dropped in ${entry.file} but still present in schema.sql`)
+      }
+      continue
+    }
+    const { body, file } = entry
     if (!schemaBody) {
       problems.push(`policy ${key} defined in ${file} but missing from schema.sql`)
     } else if (normalize(schemaBody) !== normalize(body)) {

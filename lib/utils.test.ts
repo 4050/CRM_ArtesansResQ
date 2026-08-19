@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDate, formatDateTime, isLowStock } from './utils'
+import { cn, toBCP47, formatDate, formatDateTime, isLowStock, clampQuantityInput } from './utils'
 
 describe('cn', () => {
   it('merges classes and resolves Tailwind conflicts', () => {
@@ -40,6 +40,34 @@ describe('formatDate / formatDateTime', () => {
     expect(formatDate(sample, 'uk')).toBe(new Date(sample).toLocaleDateString('uk-UA', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     }))
+  })
+})
+
+describe('clampQuantityInput', () => {
+  // Regression test: a plain `Math.max(1, Number(raw))` in NewCallForm/
+  // EditCallForm/ConsumablePicker/TeamStockClient let a partially-typed
+  // number input reach NaN (silently defeating the over-stock check
+  // downstream, since every comparison against NaN is false) or a
+  // fractional value (rejected by Postgres as a raw type-cast error, since
+  // every quantity column in this app is an integer).
+  it('parses a normal integer string', () => {
+    expect(clampQuantityInput('5')).toBe(5)
+  })
+
+  it('rounds a fractional value to the nearest integer', () => {
+    expect(clampQuantityInput('2.4')).toBe(2)
+    expect(clampQuantityInput('2.6')).toBe(3)
+  })
+
+  it('clamps below-minimum values up to 1', () => {
+    expect(clampQuantityInput('0')).toBe(1)
+    expect(clampQuantityInput('-3')).toBe(1)
+  })
+
+  it('falls back to 1 for values that parse to NaN', () => {
+    expect(clampQuantityInput('')).toBe(1)
+    expect(clampQuantityInput('-')).toBe(1)
+    expect(clampQuantityInput('abc')).toBe(1)
   })
 })
 

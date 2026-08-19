@@ -8,32 +8,35 @@ export type ConsumableOption = Pick<
 
 export async function getActiveConsumables(): Promise<Consumable[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('consumables')
     .select('*')
     .eq('is_active', true)
     .order('category')
     .order('name')
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export async function getAllConsumables(): Promise<Consumable[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('consumables')
     .select('*')
     .order('category')
     .order('name')
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export async function getStockLevels() {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('consumables')
     .select('id, name, unit, qty_in_stock, qty_minimum')
     .eq('is_active', true)
     .order('qty_in_stock')
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
@@ -47,12 +50,14 @@ export async function getConsumableOptions({ includeInactive = false } = {}): Pr
 
   if (!includeInactive) query = query.eq('is_active', true)
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export async function getConsumableNameOptions(): Promise<{ id: string; name: string }[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('consumables').select('id, name').order('name')
+  const { data, error } = await supabase.from('consumables').select('id, name').order('name')
+  if (error) throw new Error(error.message)
   return data ?? []
 }

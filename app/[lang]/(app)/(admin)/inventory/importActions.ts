@@ -125,10 +125,33 @@ export interface ImportConfirmResult {
   restocked: Consumable[]
 }
 
+// parseInventoryExcelAction already validates every row it puts into the
+// preview, but confirmInventoryImportAction is a separately-invocable server
+// action that takes that preview back as plain client input — re-check it
+// here rather than trusting whatever payload happens to arrive.
+function validateCreateRow(row: ImportRow): string | null {
+  if (!row.code.trim()) return 'Missing code'
+  if (!row.name.trim()) return 'Missing name'
+  if (!CONSUMABLE_UNITS.includes(row.unit)) return `Invalid unit "${row.unit}"`
+  if (!Number.isFinite(row.quantity) || row.quantity <= 0) return 'Quantity must be a positive number'
+  if (!Number.isFinite(row.qty_minimum) || row.qty_minimum < 0) return 'Minimum stock must be zero or a positive number'
+  return null
+}
+
 export async function confirmInventoryImportAction(
   lang: Locale,
   payload: ImportConfirmPayload
 ): Promise<ImportConfirmResult> {
+  for (const row of payload.toCreate) {
+    const message = validateCreateRow(row)
+    if (message) return { error: `Row ${row.rowNumber}: ${message}`, created: [], restocked: [] }
+  }
+  for (const { quantity } of payload.toRestock) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return { error: 'Restock quantity must be a positive number', created: [], restocked: [] }
+    }
+  }
+
   const supabase = await createClient()
 
   let created: Consumable[] = []

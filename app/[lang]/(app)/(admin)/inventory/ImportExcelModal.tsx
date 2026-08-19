@@ -54,6 +54,17 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
     })
 
     if (result.error) {
+      // Some rows may have already gone through before the failure (e.g. the
+      // restock loop errors partway). Drop those from the preview so a retry
+      // only resends what's still pending, instead of re-creating consumables
+      // or double-counting a restock quantity already applied.
+      const createdCodes = new Set(result.created.map(c => c.code))
+      const restockedIds = new Set(result.restocked.map(c => c.id))
+      setPreview(prev => prev && {
+        ...prev,
+        toCreate: prev.toCreate.filter(r => !createdCodes.has(r.code)),
+        toRestock: prev.toRestock.filter(r => !restockedIds.has(r.consumableId)),
+      })
       setError(result.error)
       setConfirming(false)
       if (result.created.length || result.restocked.length) onImported(result.created, result.restocked)

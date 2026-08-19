@@ -8,6 +8,8 @@ import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { Consumable } from '@/types'
 import { parseInventoryExcelAction, confirmInventoryImportAction, type ImportPreview } from './importActions'
 
+const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024 // 10MB - see next.config.ts's serverActions.bodySizeLimit
+
 interface Props {
   lang: Locale
   dict: Dictionary
@@ -24,6 +26,15 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // Kept in sync by hand with next.config.ts's serverActions.bodySizeLimit
+    // - rejecting oversized files here avoids an upload that would only
+    // fail with an opaque body-size error once it reaches the server.
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      e.target.value = ''
+      setError(dict.inventory.importFileTooLarge)
+      return
+    }
 
     setParsing(true)
     setError('')

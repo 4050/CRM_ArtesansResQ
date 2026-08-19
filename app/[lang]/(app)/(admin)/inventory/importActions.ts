@@ -38,9 +38,17 @@ export interface ImportPreview {
   errors: ImportRowError[]
 }
 
+// Kept in sync by hand with next.config.ts's serverActions.bodySizeLimit
+// and ImportExcelModal.tsx's client-side check - Next.js itself already
+// rejects a request body over that limit before this action even runs, but
+// this gives a friendly, specific error instead of a generic framework one
+// (and guards the action if it's ever invoked some other way).
+const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 export async function parseInventoryExcelAction(formData: FormData): Promise<{ data?: ImportPreview; error?: string }> {
   const file = formData.get('file')
   if (!(file instanceof File)) return { error: 'No file uploaded' }
+  if (file.size > MAX_IMPORT_FILE_SIZE) return { error: 'File is too large (max 10 MB)' }
 
   let workbook: XLSX.WorkBook
   try {

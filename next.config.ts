@@ -41,6 +41,15 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  experimental: {
+    serverActions: {
+      // Default is 1MB, too tight for a real .xlsx inventory sheet (the
+      // zip/XML format carries non-trivial fixed overhead even for a
+      // few hundred rows) - see ImportExcelModal.tsx's matching
+      // client-side size check, kept in sync with this value by hand.
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;

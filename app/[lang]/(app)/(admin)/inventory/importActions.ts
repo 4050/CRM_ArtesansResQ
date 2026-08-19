@@ -3,7 +3,8 @@
 import * as XLSX from 'xlsx'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import type { Locale } from '@/app/[lang]/dictionaries'
+import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
+import { friendlyDbError } from '@/lib/action-errors'
 import type { Consumable, ConsumableUnit } from '@/types'
 import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
 import { parseRawRow } from '@/lib/inventory-import'
@@ -166,7 +167,10 @@ export async function confirmInventoryImportAction(
       description: r.description,
     }))
     const { data, error } = await supabase.from('consumables').insert(rows).select()
-    if (error) return { error: error.message, created: [], restocked: [] }
+    if (error) {
+      const dict = await getDictionary(lang)
+      return { error: friendlyDbError(error, dict.inventory.duplicateCode), created: [], restocked: [] }
+    }
     created = data ?? []
   }
 

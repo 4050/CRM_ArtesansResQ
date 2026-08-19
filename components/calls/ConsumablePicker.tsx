@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { Search, X, AlertTriangle } from 'lucide-react'
 import type { Dictionary } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
@@ -23,13 +23,67 @@ interface Props {
   onClose: () => void
 }
 
+// Same selector/pattern as components/ui/Modal.tsx - this picker is a
+// separate custom dialog (its search+list+quantity-footer layout doesn't
+// map onto Modal's title/children/footer slots), so it needs its own copy
+// of the same keyboard/focus treatment rather than reusing that component.
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, onClose }: Props) {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<ConsumableOption | null>(null)
   const [quantity, setQuantity] = useState(1)
   const searchRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
 
   useEffect(() => { searchRef.current?.focus() }, [])
+
+  // onClose read through a ref (updated in its own effect, not directly
+  // during render - see Modal.tsx for why) so the keydown effect below can
+  // run once per mount/unmount instead of re-running, and stealing focus
+  // away from the search input, on every keystroke typed into it.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
+  // Escape closes, Tab can't leave the dialog, and focus returns to
+  // whatever opened this on close - same reasoning as Modal.tsx.
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onCloseRef.current()
+        return
+      }
+      if (e.key !== 'Tab' || !dialog) return
+
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previouslyFocused?.focus()
+    }
+  }, [])
 
   const filtered = consumables.filter(c => {
     const q = search.toLowerCase()
@@ -58,10 +112,16 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-900">{dict.calls.form.pickerTitle}</h3>
+          <h3 id={titleId} className="font-semibold text-slate-900">{dict.calls.form.pickerTitle}</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>

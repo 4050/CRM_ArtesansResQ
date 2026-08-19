@@ -31,6 +31,7 @@ export default function LanguageSwitcher({ lang }: { lang: Locale }) {
         <button
           key={locale}
           onClick={() => switchTo(locale)}
+          aria-current={locale === lang ? 'true' : undefined}
           className={cn(
             'px-2 py-1 rounded-md transition-colors',
             locale === lang

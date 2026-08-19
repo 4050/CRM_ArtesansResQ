@@ -4,7 +4,9 @@
     "appTagline": "Medical supplies management",
     "appTitle": "MedStock — Supplies CRM",
     "appDescription": "Supply management system for a medical team",
-    "defaultUserName": "User"
+    "defaultUserName": "User",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "nav": {
     "dashboard": "Dashboard",

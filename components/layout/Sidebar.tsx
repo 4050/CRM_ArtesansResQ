@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, ClipboardList, Package, Boxes, BarChart3, LogOut, Ambulance, Menu, X, Plus, ArrowLeftRight, Truck, Users } from 'lucide-react'
@@ -18,6 +18,8 @@ interface Props {
   nav: Dictionary['nav']
   appName: string
   appTagline: string
+  openMenuLabel: string
+  closeMenuLabel: string
 }
 
 function useNavItems(lang: Locale, nav: Dictionary['nav'], role: UserRole) {
@@ -43,7 +45,7 @@ function useNavItems(lang: Locale, nav: Dictionary['nav'], role: UserRole) {
   return items
 }
 
-function NavContent({ lang, userName, role, nav, appName, appTagline, onClose, onLogout }: Props & {
+function NavContent({ lang, userName, role, nav, appName, appTagline, closeMenuLabel, onClose, onLogout }: Props & {
   onClose?: () => void
   onLogout: () => void
 }) {
@@ -63,7 +65,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, onClose, o
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 md:hidden">
+          <button onClick={onClose} aria-label={closeMenuLabel} className="p-1 text-slate-400 hover:text-slate-600 md:hidden">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -86,6 +88,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, onClose, o
               key={href}
               href={href}
               onClick={onClose}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 active ? 'bg-red-50 text-red-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -120,23 +123,41 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, onClose, o
   )
 }
 
-export default function Sidebar({ lang, userName, role, nav, appName, appTagline }: Props) {
+export default function Sidebar({ lang, userName, role, nav, appName, appTagline, openMenuLabel, closeMenuLabel }: Props) {
   const [open, setOpen] = useState(false)
+  const drawerRef = useRef<HTMLDivElement>(null)
 
   async function handleLogout() {
     await logoutAction(lang)
   }
 
+  // The drawer overlay only mounts while `open` is true, so this behaves
+  // the same as Modal.tsx's own mount-scoped effect - Escape closes it and
+  // focus moves in on open, though this is a nav drawer rather than a true
+  // modal dialog, so (unlike Modal.tsx) it doesn't trap Tab inside it.
+  // Doesn't need the onClose-via-ref workaround Modal.tsx has since
+  // setOpen's identity never changes across renders.
+  useEffect(() => {
+    if (!open) return
+    drawerRef.current?.querySelector<HTMLElement>('button, a[href]')?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open])
+
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col h-screen fixed left-0 top-0">
-        <NavContent lang={lang} userName={userName} role={role} nav={nav} appName={appName} appTagline={appTagline} onLogout={handleLogout} />
+        <NavContent lang={lang} userName={userName} role={role} nav={nav} appName={appName} appTagline={appTagline} openMenuLabel={openMenuLabel} closeMenuLabel={closeMenuLabel} onLogout={handleLogout} />
       </aside>
 
       {/* Mobile top bar */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 flex items-center justify-between px-4 h-14">
-        <button onClick={() => setOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+        <button onClick={() => setOpen(true)} aria-label={openMenuLabel} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
@@ -154,7 +175,7 @@ export default function Sidebar({ lang, userName, role, nav, appName, appTagline
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="relative w-72 bg-white flex flex-col h-full shadow-xl">
+          <aside ref={drawerRef} className="relative w-72 bg-white flex flex-col h-full shadow-xl">
             <NavContent
               lang={lang}
               userName={userName}
@@ -162,6 +183,8 @@ export default function Sidebar({ lang, userName, role, nav, appName, appTagline
               nav={nav}
               appName={appName}
               appTagline={appTagline}
+              openMenuLabel={openMenuLabel}
+              closeMenuLabel={closeMenuLabel}
               onClose={() => setOpen(false)}
               onLogout={handleLogout}
             />

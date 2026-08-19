@@ -5,7 +5,7 @@ import { Search, X, AlertTriangle } from 'lucide-react'
 import type { Dictionary } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn } from '@/lib/utils'
+import { cn, clampQuantityInput } from '@/lib/utils'
 
 function groupByCategory(items: ConsumableOption[]) {
   return items.reduce<Record<string, ConsumableOption[]>>((acc, item) => {
@@ -141,7 +141,7 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
                   type="number"
                   min="1"
                   value={quantity}
-                  onChange={e => setQuantity(Math.max(1, Number(e.target.value)))}
+                  onChange={e => setQuantity(clampQuantityInput(e.target.value))}
                   className={cn(
                     'w-16 text-center text-sm font-semibold border rounded-lg py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500',
                     overStock ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300 bg-white'

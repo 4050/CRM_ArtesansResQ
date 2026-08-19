@@ -208,7 +208,8 @@
     "importConfirm": "Confirm import",
     "importNoValidRows": "No valid rows found in the file",
     "importSummary": "{create} new item(s), {restock} item(s) to restock",
-    "duplicateCode": "This code is already used by another item"
+    "duplicateCode": "This code is already used by another item",
+    "importFileTooLarge": "File is too large (max 10 MB)"
   },
   "vehicles": {
     "title": "Vehicles & bags",

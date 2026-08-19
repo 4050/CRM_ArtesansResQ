@@ -208,7 +208,8 @@
     "importConfirm": "Підтвердити імпорт",
     "importNoValidRows": "У файлі не знайдено жодного коректного рядка",
     "importSummary": "{create} нов. поз., {restock} поз. на поповнення",
-    "duplicateCode": "Цей код уже використовується іншою позицією"
+    "duplicateCode": "Цей код уже використовується іншою позицією",
+    "importFileTooLarge": "Файл завеликий (макс. 10 МБ)"
   },
   "vehicles": {
     "title": "Машини та сумки",

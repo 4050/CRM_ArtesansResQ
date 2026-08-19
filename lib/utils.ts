@@ -13,15 +13,6 @@ export function toBCP47(lang: Locale): string {
   return BCP47[lang]
 }
 
-export function formatDate(dateStr: string, lang: Locale): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString(BCP47[lang], {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 export function formatDateTime(dateStr: string, lang: Locale): string {
   const d = new Date(dateStr)
   return d.toLocaleString(BCP47[lang], {

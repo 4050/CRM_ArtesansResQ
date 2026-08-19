@@ -58,7 +58,11 @@ export default function StockTable<T extends StockItem>({
   const [category, setCategory] = useState(ALL_CATEGORIES)
 
   const filtered = items.filter(item => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    // Matches ConsumablePicker's search, which also checks code - the code
+    // badge is rendered prominently right next to the name, so a user
+    // typing it expects a hit.
+    const matchSearch = item.name.toLowerCase().includes(q) || (item.code ?? '').toLowerCase().includes(q)
     const matchCat = category === ALL_CATEGORIES || item.category === category
     return matchSearch && matchCat
   })

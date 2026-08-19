@@ -232,15 +232,9 @@ create policy "Owners or admins update calls" on public.calls
   for update to authenticated
   using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()))
   with check (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()));
-create policy "Owners or admins delete calls" on public.calls
-  for delete to authenticated
-  using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()));
 
 create policy "Authenticated read writeoffs" on public.writeoffs
   for select to authenticated using (organization_id = public.current_org_id());
-create policy "Owners or admins delete writeoffs" on public.writeoffs
-  for delete to authenticated
-  using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()));
 
 create policy "Authenticated read stock movements" on public.stock_movements
   for select to authenticated using (organization_id = public.current_org_id());

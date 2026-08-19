@@ -6,9 +6,16 @@ import type { NextConfig } from "next";
 // the policy below can be this strict without a nonce setup. 'unsafe-inline'
 // on script/style is still needed for the framework's own hydration script
 // and React's occasional inline `style` attribute.
+//
+// 'unsafe-eval' on script-src is added in development only: `next dev
+// --webpack` (this project's dev script) wraps modules in eval() for
+// source-mapped Fast Refresh, so without it every client component fails
+// to hydrate under this CSP - buttons/onClick handlers silently do nothing
+// since React never attaches its event listeners. The production build
+// (next build, Turbopack) doesn't use eval, so prod stays without it.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",

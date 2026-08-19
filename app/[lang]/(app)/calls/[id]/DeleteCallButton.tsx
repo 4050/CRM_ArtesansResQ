@@ -21,9 +21,20 @@ export default function DeleteCallButton({ lang, dict, callId }: Props) {
     setDeleting(true)
     setError('')
 
-    const result = await deleteCallAction(lang, callId)
-    if (result?.error) {
-      setError(result.error)
+    // Same try/finally shape as NewCallForm/EditCallForm's submit handlers -
+    // deleteCallAction redirects on success (which unwinds through here as
+    // a thrown Next.js signal, not a normal return), so this can't be a
+    // try/catch: catching it would treat the redirect as an error. Without
+    // finally, though, any *other* thrown failure (a dropped connection,
+    // not an { error } response) left `deleting` stuck true forever, with
+    // every button in the modal - including the X - disabled and no way
+    // out short of a page reload.
+    try {
+      const result = await deleteCallAction(lang, callId)
+      if (result?.error) {
+        setError(result.error)
+      }
+    } finally {
       setDeleting(false)
     }
   }

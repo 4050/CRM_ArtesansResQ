@@ -61,13 +61,16 @@ export function startOfDayIso(timeZone: string, now: Date = new Date()): string 
 }
 
 // Clamps a `<input type="number" min="1">` onChange value to a valid
-// quantity. A partially-typed value (empty, "-", scientific notation
-// mid-entry) makes Number(raw) NaN, and Math.max(1, NaN) is NaN - which
-// then silently defeats any `quantity > qty_in_stock` over-stock check
-// downstream, since every comparison against NaN is false. Falls back to
-// 1 rather than the previous value so a cleared field doesn't leave a
-// stale number in place.
+// integer quantity. A partially-typed value (empty, "-", scientific
+// notation mid-entry) makes Number(raw) NaN, and Math.max(1, NaN) is NaN -
+// which then silently defeats any `quantity > qty_in_stock` over-stock
+// check downstream, since every comparison against NaN is false. A
+// fractional value (e.g. "1.5") isn't NaN but still isn't valid, since
+// every quantity column in this app is an integer - Postgres would reject
+// it as a raw, untranslated type-cast error. Falls back to 1 for anything
+// that doesn't parse, rather than the previous value, so a cleared field
+// doesn't leave a stale number in place.
 export function clampQuantityInput(raw: string): number {
   const n = Number(raw)
-  return Number.isFinite(n) ? Math.max(1, n) : 1
+  return Number.isFinite(n) ? Math.max(1, Math.round(n)) : 1
 }

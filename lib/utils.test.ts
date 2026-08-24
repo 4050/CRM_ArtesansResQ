@@ -71,11 +71,18 @@ describe('startOfDayIso', () => {
 
 describe('clampQuantityInput', () => {
   // Regression test: a plain `Math.max(1, Number(raw))` in NewCallForm/
-  // EditCallForm/ConsumablePicker let a partially-typed number input reach
-  // NaN, which then silently defeated the over-stock check downstream
-  // (every comparison against NaN is false).
-  it('parses a normal numeric string', () => {
+  // EditCallForm/ConsumablePicker/TeamStockClient let a partially-typed
+  // number input reach NaN (silently defeating the over-stock check
+  // downstream, since every comparison against NaN is false) or a
+  // fractional value (rejected by Postgres as a raw type-cast error, since
+  // every quantity column in this app is an integer).
+  it('parses a normal integer string', () => {
     expect(clampQuantityInput('5')).toBe(5)
+  })
+
+  it('rounds a fractional value to the nearest integer', () => {
+    expect(clampQuantityInput('2.4')).toBe(2)
+    expect(clampQuantityInput('2.6')).toBe(3)
   })
 
   it('clamps below-minimum values up to 1', () => {

@@ -5,6 +5,7 @@ import { Undo2, Trash2, Ban, Loader2, AlertTriangle } from 'lucide-react'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { TeamStockRow } from '@/lib/data/team-stock'
 import { unitLabel } from '@/lib/consumable-labels'
+import { clampQuantityInput } from '@/lib/utils'
 import StockTable, { type StockItem } from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
 import { returnFromTeamStockAction, discardFromTeamStockAction, deleteTeamStockItemAction } from './actions'
@@ -241,7 +242,7 @@ export default function TeamStockClient({ lang, dict, items: initial, isAdmin }:
                 min="1"
                 max={target.qty_in_stock}
                 value={qty}
-                onChange={e => setQty(Math.max(1, Math.min(target.qty_in_stock, Number(e.target.value))))}
+                onChange={e => setQty(Math.min(target.qty_in_stock, clampQuantityInput(e.target.value)))}
                 className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button

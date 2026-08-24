@@ -17,6 +17,7 @@
     "movements": "Movements",
     "reports": "Reports",
     "users": "Users",
+    "invite": "Invite user",
     "newCall": "New call",
     "logout": "Log out"
   },
@@ -26,7 +27,28 @@
     "submit": "Log in",
     "invalidCredentials": "Invalid email or password",
     "emailPlaceholder": "you@example.com",
-    "passwordPlaceholder": "••••••••"
+    "passwordPlaceholder": "••••••••",
+    "inviteExpired": "This invite link is invalid or has expired. Ask an administrator to send a new one."
+  },
+  "invite": {
+    "title": "Invite a user",
+    "subtitle": "Only people you invite here can register — they'll get an email with a link to set their password.",
+    "email": "Email address",
+    "emailPlaceholder": "colleague@example.com",
+    "submit": "Send invite",
+    "success": "Invite sent to {email}.",
+    "forbidden": "You don't have permission to invite users.",
+    "emailRequired": "Enter an email address."
+  },
+  "setPassword": {
+    "title": "Complete your registration",
+    "subtitle": "Choose a password to finish setting up your account.",
+    "password": "New password",
+    "confirmPassword": "Confirm password",
+    "submit": "Set password and continue",
+    "passwordsDontMatch": "Passwords don't match.",
+    "expiredLink": "This link is invalid or has expired. Ask an administrator to send a new invite.",
+    "weakPassword": "Password is too weak or invalid. Use at least 8 characters."
   },
   "consumables": {
     "units": {

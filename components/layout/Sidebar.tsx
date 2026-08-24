@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ClipboardList, Package, Boxes, BarChart3, LogOut, Ambulance, Menu, X, Plus, ArrowLeftRight, Truck, Users } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Package, Boxes, BarChart3, LogOut, Ambulance, Menu, X, Plus, ArrowLeftRight, Truck, Users, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAction } from '@/lib/actions/auth'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
@@ -35,6 +35,7 @@ function useNavItems(lang: Locale, nav: Dictionary['nav'], role: UserRole) {
       { href: `/${lang}/vehicles`, label: nav.vehicles, icon: Truck },
       { href: `/${lang}/movements`, label: nav.movements, icon: ArrowLeftRight },
       { href: `/${lang}/reports`, label: nav.reports, icon: BarChart3 },
+      { href: `/${lang}/invite`, label: nav.invite, icon: UserPlus },
     )
   }
 

@@ -26,7 +26,10 @@ Create `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API in the Supabase Dashboard) powers the `/{lang}/invite` page's use of the Admin API to invite users — see `lib/supabase/admin.ts`. It bypasses RLS entirely: never expose it to the client, never prefix it `NEXT_PUBLIC_`, and don't commit it.
 
 ## Database
 
@@ -37,8 +40,14 @@ For a new project, run [`supabase/schema.sql`](supabase/schema.sql) in the Supab
 Three access tiers: `master_admin`, `admin`, `medic`.
 
 - **master_admin** — everything an admin can do, plus managing the roles of other organization members on the `/{lang}/users` page.
-- **admin** — manages the main warehouse (`/inventory`), vehicles/bags (`/vehicles`), the movement log (`/movements`), reports (`/reports`), and can edit any call.
+- **admin** — manages the main warehouse (`/inventory`), vehicles/bags (`/vehicles`), the movement log (`/movements`), reports (`/reports`), inviting new users (`/invite`), and can edit any call.
 - **medic** — sees only the dashboard, calls, write-offs (`/writeoffs`), and team stock (`/team-stock`); can create and edit their own calls.
+
+### Registration is invite-only
+
+There is no public sign-up form. `handle_new_user()` (in `supabase/schema.sql`) requires `organization_id` in the new auth user's `raw_user_meta_data` and rolls back the whole `auth.users` insert without it — so the only way to end up with an account is through a flow that sets that metadata itself.
+
+Any `admin` or `master_admin` can invite someone on the `/{lang}/invite` page: it calls `supabase.auth.admin.inviteUserByEmail()` server-side (via the service-role client in `lib/supabase/admin.ts`), stamping the inviting admin's own `organization_id` into the new user's metadata so they land in the same organization. The invitee gets an email (Supabase's built-in invite template — customize it under Authentication → Email Templates in the Dashboard) with a link to `/{lang}/auth/confirm`, which exchanges the link's token for a session and redirects to `/{lang}/set-password`, where they choose a password and land on the dashboard. Invited users always start as `medic`; promote them afterward on `/{lang}/users`.
 
 The first user is created with the `medic` role. The very first `master_admin` in an organization is assigned by hand via the SQL Editor:
 
@@ -52,7 +61,7 @@ Every subsequent role change (between `admin` and `medic`) is done by a master_a
 
 All data (vehicles, bags, stock, calls, write-offs, movement log) belongs to an organization (`organizations`) and is isolated between organizations via RLS. On first run, `schema.sql` creates one organization with a fixed id of `11111111-1111-1111-1111-111111111111` and seeds test data into it.
 
-**Creating a user now requires `organization_id`** in `raw_user_meta_data` — without it, `handle_new_user()` will roll back the transaction. When inviting via the Supabase Dashboard (Authentication → Add user), fill in the "User Metadata" field:
+**Creating a user now requires `organization_id`** in `raw_user_meta_data` — without it, `handle_new_user()` will roll back the transaction. The `/{lang}/invite` page (see "Registration is invite-only" above) handles this automatically for day-to-day use; the manual paths below are for bootstrapping — e.g. a brand-new organization's very first user, before anyone in it holds `admin` to use the in-app flow. When inviting via the Supabase Dashboard (Authentication → Add user), fill in the "User Metadata" field:
 
 ```json
 { "organization_id": "11111111-1111-1111-1111-111111111111", "name": "Jane Doe" }
@@ -105,6 +114,6 @@ All of these also run automatically in CI (`.github/workflows/ci.yml`) on every 
 
 The UI is available in English (`/en/...`) and Ukrainian (`/uk/...`) — the language is detected automatically (`Accept-Language`) or chosen via the switcher in the sidebar and remembered in a cookie. There is no Russian localization.
 
-Main routes: `/{lang}/dashboard`, `/{lang}/calls`, `/{lang}/writeoffs`, `/{lang}/team-stock`, `/{lang}/inventory`, `/{lang}/vehicles`, `/{lang}/movements`, `/{lang}/reports`, `/{lang}/users`.
+Main routes: `/{lang}/dashboard`, `/{lang}/calls`, `/{lang}/writeoffs`, `/{lang}/team-stock`, `/{lang}/inventory`, `/{lang}/vehicles`, `/{lang}/movements`, `/{lang}/reports`, `/{lang}/users`, `/{lang}/invite`. Public (no session required): `/{lang}/login`, `/{lang}/set-password`, `/{lang}/auth/confirm`.
 
 The `/{lang}/movements` screen shows an automatically generated log of all stock changes. For an existing database, apply the SQL files under `supabase/migrations` in sequence.

@@ -43,7 +43,7 @@ export async function proxy(request: NextRequest) {
     }
 
     const rest = pathname.slice(`/${pathnameLocale}`.length) || '/'
-    const isPublic = rest === '/login' || rest === '/'
+    const isPublic = rest === '/login' || rest === '/' || rest === '/set-password' || rest === '/auth/confirm'
     if (!isPublic) {
       return NextResponse.redirect(new URL(`/${pathnameLocale}/login`, request.url))
     }
@@ -74,7 +74,7 @@ export async function proxy(request: NextRequest) {
 
   const rest = pathname.slice(`/${pathnameLocale}`.length) || '/'
   const isLoginPage = rest === '/login'
-  const isPublic = isLoginPage || rest === '/'
+  const isPublic = isLoginPage || rest === '/' || rest === '/set-password' || rest === '/auth/confirm'
 
   if (!isAuthenticated && !isPublic) {
     return NextResponse.redirect(new URL(`/${pathnameLocale}/login`, request.url))

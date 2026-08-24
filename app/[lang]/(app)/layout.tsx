@@ -35,6 +35,8 @@ export default async function AppLayout({
         nav={dict.nav}
         appName={dict.common.appName}
         appTagline={dict.common.appTagline}
+        openMenuLabel={dict.common.openMenu}
+        closeMenuLabel={dict.common.closeMenu}
       />
       <main className="flex-1 md:ml-64 overflow-auto pt-14 md:pt-0">
         <div className="p-4 md:p-8">{children}</div>

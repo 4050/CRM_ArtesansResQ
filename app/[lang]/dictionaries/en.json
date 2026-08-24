@@ -328,7 +328,8 @@
       "invalidDateTime": "Invalid date or time",
       "cancel": "Cancel",
       "saveCall": "Save call",
-      "saveChanges": "Save changes"
+      "saveChanges": "Save changes",
+      "overStockError": "Some items exceed available stock — adjust the quantity before saving"
     },
     "errors": {
       "saving": "Error saving the call",

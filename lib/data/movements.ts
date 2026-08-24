@@ -4,7 +4,7 @@ import type { StockMovementType } from '@/types'
 
 export type Warehouse = 'main' | 'team'
 
-const DEFAULT_PAGE_SIZE = 500
+const DEFAULT_PAGE_SIZE = 50
 
 export interface MovementListFilters {
   consumableId?: string

@@ -9,7 +9,13 @@
 -- ('pgtap-marker-call-1') rather than a captured id, so no psql variable
 -- capture (\gset) is needed - keeps this file plain, portable SQL.
 begin;
-select plan(14);
+select plan(15);
+
+-- An org B vehicle, used only to prove update_call_with_writeoffs rejects a
+-- cross-org p_vehicle_id (see create_call_with_writeoffs's equivalent
+-- check, which update_call_with_writeoffs was missing).
+insert into public.vehicles (id, number, organization_id) values
+  ('dddddddd-0000-0000-0000-000000000099', 'V-99-org-b', 'aaaaaaaa-0000-0000-0000-000000000002');
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
 
@@ -91,6 +97,17 @@ select is(
   (select qty_in_stock from public.team_stock where consumable_id = 'cccccccc-0000-0000-0000-000000000003'::uuid),
   12,
   'team stock reflects the owner''s updated write-off quantity (20 - 8)'
+);
+
+-- a vehicle from another organization is rejected, same as a foreign bag
+-- already was - update_call_with_writeoffs was missing this check
+select throws_like(
+  $$ select public.update_call_with_writeoffs(
+       (select id from public.calls where description = 'pgtap-marker-call-1'),
+       now(), 'pgtap-marker-call-1', 'dddddddd-0000-0000-0000-000000000099'::uuid, 'eeeeeeee-0000-0000-0000-000000000001'::uuid, '[]'::jsonb
+     ) $$,
+  'Vehicle not found',
+  'updating a call with another organization''s vehicle is rejected'
 );
 
 -- an admin in the same org can update someone else's call too

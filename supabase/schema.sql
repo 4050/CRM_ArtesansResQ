@@ -890,6 +890,13 @@ begin
   end if;
 
   if not exists (
+    select 1 from public.vehicles
+    where id = p_vehicle_id and organization_id = v_org_id
+  ) then
+    raise exception 'Vehicle not found';
+  end if;
+
+  if not exists (
     select 1 from public.bags
     where id = p_bag_id and organization_id = v_org_id
   ) then

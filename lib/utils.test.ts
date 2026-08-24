@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, clampQuantityInput } from './utils'
+import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, clampQuantityInput, clampNonNegativeInt } from './utils'
 
 describe('cn', () => {
   it('merges classes and resolves Tailwind conflicts', () => {
@@ -94,6 +94,36 @@ describe('clampQuantityInput', () => {
     expect(clampQuantityInput('')).toBe(1)
     expect(clampQuantityInput('-')).toBe(1)
     expect(clampQuantityInput('abc')).toBe(1)
+  })
+})
+
+describe('clampNonNegativeInt', () => {
+  // Regression test: InventoryClient's opening-stock/minimum-stock inputs
+  // used a bare Number(e.target.value) with no guard, so clearing the
+  // field mid-edit sent NaN to createConsumableAction/updateConsumableAction
+  // and surfaced as a raw Postgres not-null/type-cast error instead of
+  // being handled client-side.
+  it('parses a normal integer string', () => {
+    expect(clampNonNegativeInt('5')).toBe(5)
+  })
+
+  it('rounds a fractional value to the nearest integer', () => {
+    expect(clampNonNegativeInt('2.4')).toBe(2)
+    expect(clampNonNegativeInt('2.6')).toBe(3)
+  })
+
+  it('clamps negative values up to 0', () => {
+    expect(clampNonNegativeInt('-3')).toBe(0)
+  })
+
+  it('allows 0 as a valid value, unlike clampQuantityInput', () => {
+    expect(clampNonNegativeInt('0')).toBe(0)
+  })
+
+  it('falls back to 0 for values that parse to NaN', () => {
+    expect(clampNonNegativeInt('')).toBe(0)
+    expect(clampNonNegativeInt('-')).toBe(0)
+    expect(clampNonNegativeInt('abc')).toBe(0)
   })
 })
 

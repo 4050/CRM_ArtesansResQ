@@ -16,7 +16,7 @@ import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
-import { cn } from '@/lib/utils'
+import { cn, clampNonNegativeInt } from '@/lib/utils'
 import ImportExcelModal from './ImportExcelModal'
 
 interface Props {
@@ -662,7 +662,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     type="number"
                     min="0"
                     value={form.qty_in_stock}
-                    onChange={e => setForm(f => ({ ...f, qty_in_stock: Number(e.target.value) }))}
+                    onChange={e => setForm(f => ({ ...f, qty_in_stock: clampNonNegativeInt(e.target.value) }))}
                     disabled={modal === 'edit'}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:text-slate-500"
                   />
@@ -673,7 +673,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     type="number"
                     min="0"
                     value={form.qty_minimum}
-                    onChange={e => setForm(f => ({ ...f, qty_minimum: Number(e.target.value) }))}
+                    onChange={e => setForm(f => ({ ...f, qty_minimum: clampNonNegativeInt(e.target.value) }))}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>

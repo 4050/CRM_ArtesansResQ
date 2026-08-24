@@ -74,3 +74,11 @@ export function clampQuantityInput(raw: string): number {
   const n = Number(raw)
   return Number.isFinite(n) ? Math.max(1, Math.round(n)) : 1
 }
+
+// Same guarding as clampQuantityInput, but floors at 0 rather than 1 - for
+// `<input type="number" min="0">` fields where empty/zero is a legitimate
+// value (e.g. a new item's opening stock, or its reorder minimum).
+export function clampNonNegativeInt(raw: string): number {
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0
+}

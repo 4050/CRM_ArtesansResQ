@@ -410,12 +410,25 @@
     "subtitle": "Manage roles for members of your organization",
     "name": "Name",
     "role": "Role",
+    "access": "Access",
     "error": "Error",
     "thisIsYou": "(you)",
     "roleLabels": {
       "master_admin": "Master admin",
       "admin": "Admin",
       "medic": "Medic"
-    }
+    },
+    "statusActive": "Active",
+    "statusRestricted": "Restricted",
+    "restrict": "Restrict access",
+    "restore": "Restore access",
+    "deleteUser": "Delete",
+    "deleteTitle": "Delete user?",
+    "deleteWarning": "The account is permanently deleted. Their past calls and write-offs are kept, just no longer attributed to them. This can't be undone.",
+    "cancel": "Cancel",
+    "forbidden": "You don't have permission to manage users.",
+    "cannotTargetSelf": "You can't do this to your own account.",
+    "cannotTargetMasterAdmin": "The master admin's account can't be restricted or deleted.",
+    "notFound": "User not found in your organization."
   }
 }

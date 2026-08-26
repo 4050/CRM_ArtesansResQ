@@ -19,4 +19,10 @@ export const env = {
   get supabaseAnonKey() {
     return requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
   },
+  // Server-only (no NEXT_PUBLIC_ prefix - never bundled to the client). Used
+  // solely by lib/supabase/admin.ts to invite users; keep it out of any code
+  // path reachable from the browser.
+  get supabaseServiceRoleKey() {
+    return requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+  },
 }

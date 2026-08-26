@@ -76,7 +76,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
 
       {/* Info card */}
       <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-        <div className="grid grid-cols-2 divide-x divide-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-slate-100">
           <div className="px-5 py-4 flex items-start gap-3">
             <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
               <Calendar className="w-4 h-4 text-slate-500" />
@@ -101,7 +101,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
           </div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-slate-100">
           <div className="px-5 py-4 flex items-start gap-3">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
               <Truck className="w-4 h-4 text-blue-600" />

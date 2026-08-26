@@ -59,11 +59,11 @@ export default async function CallsPage({
       </div>
 
       {/* Filters */}
-      <form className="flex gap-3 flex-wrap">
+      <form className="flex flex-col sm:flex-row gap-3 sm:flex-wrap">
         <select
           name="vehicle"
           defaultValue={sp.vehicle ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.calls.list.allVehicles}</option>
           {vehicles?.map(v => <option key={v.id} value={v.id}>{v.number}</option>)}
@@ -72,7 +72,7 @@ export default async function CallsPage({
         <select
           name="bag"
           defaultValue={sp.bag ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.calls.list.allBags}</option>
           {bags?.map(b => <option key={b.id} value={b.id}>{b.number}</option>)}
@@ -81,27 +81,29 @@ export default async function CallsPage({
         <select
           name="user"
           defaultValue={sp.user ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.calls.list.allEmployees}</option>
           {users?.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
 
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-        >
-          {dict.calls.list.apply}
-        </button>
-
-        {(sp.vehicle || sp.bag || sp.user) && (
-          <Link
-            href={`/${lang}/calls`}
-            className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
-            {dict.calls.list.reset}
-          </Link>
-        )}
+            {dict.calls.list.apply}
+          </button>
+
+          {(sp.vehicle || sp.bag || sp.user) && (
+            <Link
+              href={`/${lang}/calls`}
+              className="flex-1 sm:flex-none text-center px-4 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {dict.calls.list.reset}
+            </Link>
+          )}
+        </div>
       </form>
 
       {/* Table */}

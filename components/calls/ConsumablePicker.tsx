@@ -111,18 +111,21 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
   const overStock = selected && quantity > selected.qty_in_stock
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    // Bottom sheet below `sm` (same reasoning as components/ui/Modal.tsx -
+    // this is the busiest dialog in the app, opened every time a medic adds
+    // a consumable to a call), centered dialog at `sm` and up.
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh]"
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col max-h-[92vh] sm:max-h-[85vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
           <h3 id={titleId} className="font-semibold text-slate-900">{dict.calls.form.pickerTitle}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="p-2.5 -m-1.5 text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -186,14 +189,14 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
 
         {/* Quantity + confirm */}
         {selected && (
-          <div className="border-t border-slate-100 px-5 py-4 bg-slate-50 rounded-b-2xl">
+          <div className="border-t border-slate-100 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 bg-slate-50 sm:rounded-b-2xl shrink-0">
             <div className="text-sm font-medium text-slate-700 mb-3 truncate">{selected.name}</div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-lg font-medium"
+                  className="w-9 h-9 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-lg font-medium"
                 >
                   −
                 </button>
@@ -210,7 +213,7 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
                 <button
                   type="button"
                   onClick={() => setQuantity(q => q + 1)}
-                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-lg font-medium"
+                  className="w-9 h-9 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center text-lg font-medium"
                 >
                   +
                 </button>
@@ -220,7 +223,7 @@ export default function ConsumablePicker({ dict, consumables, usedIds, onAdd, on
                 type="button"
                 onClick={handleConfirm}
                 disabled={!!overStock}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
                 {dict.calls.form.add}
               </button>

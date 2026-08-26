@@ -59,11 +59,11 @@ export default async function WriteoffsPage({
       </div>
 
       {/* Filters */}
-      <form className="flex gap-3 flex-wrap">
+      <form className="flex flex-col sm:flex-row gap-3 sm:flex-wrap">
         <select
           name="consumable"
           defaultValue={sp.consumable ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.writeoffs.allConsumables}</option>
           {consumables?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -72,7 +72,7 @@ export default async function WriteoffsPage({
         <select
           name="user"
           defaultValue={sp.user ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.writeoffs.allEmployees}</option>
           {users?.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -81,27 +81,29 @@ export default async function WriteoffsPage({
         <select
           name="source"
           defaultValue={sp.source ?? ''}
-          className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="w-full sm:w-auto px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
         >
           <option value="">{dict.writeoffs.allSources}</option>
           {CONSUMABLE_SOURCES.map(src => <option key={src} value={src}>{sourceLabel(dict, src)}</option>)}
         </select>
 
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-        >
-          {dict.writeoffs.apply}
-        </button>
-
-        {(sp.consumable || sp.user || sp.source) && (
-          <Link
-            href={`/${lang}/writeoffs`}
-            className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
-            {dict.writeoffs.reset}
-          </Link>
-        )}
+            {dict.writeoffs.apply}
+          </button>
+
+          {(sp.consumable || sp.user || sp.source) && (
+            <Link
+              href={`/${lang}/writeoffs`}
+              className="flex-1 sm:flex-none text-center px-4 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {dict.writeoffs.reset}
+            </Link>
+          )}
+        </div>
       </form>
 
       {/* Table */}

@@ -139,8 +139,8 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
               <h3 className="text-sm font-semibold text-slate-800 mb-2">
                 {dict.inventory.importToCreate} ({preview.toCreate.length})
               </h3>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
                   <thead>
                     <tr className="text-xs text-slate-400 uppercase bg-slate-50 border-b border-slate-100">
                       <th className="text-left px-3 py-2">{dict.inventory.code}</th>
@@ -169,8 +169,8 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
               <h3 className="text-sm font-semibold text-slate-800 mb-2">
                 {dict.inventory.importToRestock} ({preview.toRestock.length})
               </h3>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="w-full min-w-[360px] text-sm">
                   <thead>
                     <tr className="text-xs text-slate-400 uppercase bg-slate-50 border-b border-slate-100">
                       <th className="text-left px-3 py-2">{dict.inventory.name}</th>

@@ -113,7 +113,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.calls.form.date}</label>
               <input
@@ -134,7 +134,7 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 {dict.calls.form.vehicle} <span className="text-red-500">*</span>

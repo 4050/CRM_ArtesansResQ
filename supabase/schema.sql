@@ -19,6 +19,7 @@ create table public.users (
   name text not null,
   role text not null default 'medic' check (role in ('master_admin', 'admin', 'medic')),
   brigade text,
+  is_active boolean not null default true,
   organization_id uuid not null references public.organizations(id),
   created_at timestamptz default now()
 );
@@ -70,7 +71,9 @@ create table public.calls (
   description text,
   vehicle_id uuid references public.vehicles(id),
   bag_id uuid references public.bags(id),
-  user_id uuid references public.users(id),
+  -- on delete set null: a deleted user's call history is kept, just
+  -- orphaned - see 202608260001, same reasoning as consumable_id below.
+  user_id uuid references public.users(id) on delete set null,
   organization_id uuid not null references public.organizations(id),
   created_at timestamptz default now()
 );
@@ -83,7 +86,8 @@ create table public.writeoffs (
   -- history is kept, just orphaned - see 202607230001.
   consumable_id uuid references public.consumables(id) on delete set null,
   quantity integer not null check (quantity > 0),
-  user_id uuid references public.users(id),
+  -- on delete set null, same reasoning as consumable_id above - see 202608260001.
+  user_id uuid references public.users(id) on delete set null,
   organization_id uuid not null references public.organizations(id),
   created_at timestamptz default now()
 );
@@ -98,7 +102,8 @@ create table public.stock_movements (
   quantity_delta integer not null check (quantity_delta <> 0),
   quantity_before integer not null,
   quantity_after integer not null,
-  user_id uuid references public.users(id),
+  -- on delete set null, same reasoning as consumable_id above - see 202608260001.
+  user_id uuid references public.users(id) on delete set null,
   organization_id uuid not null references public.organizations(id),
   warehouse text not null default 'main' check (warehouse in ('main', 'team')),
   created_at timestamptz not null default now()
@@ -172,7 +177,7 @@ language sql
 stable
 security definer set search_path = ''
 as $$
-  select organization_id from public.users where id = auth.uid();
+  select organization_id from public.users where id = auth.uid() and is_active;
 $$;
 
 -- Прямые insert'ы (например, создание позиции склада, машины или сумки из

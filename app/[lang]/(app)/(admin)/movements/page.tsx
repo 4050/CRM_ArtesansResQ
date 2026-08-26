@@ -94,54 +94,58 @@ export default async function MovementsPage({
         <p className="text-sm text-slate-500 mt-1">{dict.movements.subtitle}</p>
       </div>
 
-      <form className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-3 items-end">
-        <label className="text-sm text-slate-600">
+      <form className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end">
+        <label className="text-sm text-slate-600 w-full sm:w-auto">
           <span className="block mb-1.5 font-medium">{dict.movements.item}</span>
-          <select name="consumable" defaultValue={sp.consumable ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white max-w-56">
+          <select name="consumable" defaultValue={sp.consumable ?? ''} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white sm:max-w-56">
             <option value="">{dict.movements.allItems}</option>
             {consumables?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
-        <label className="text-sm text-slate-600">
+        <label className="text-sm text-slate-600 w-full sm:w-auto">
           <span className="block mb-1.5 font-medium">{dict.movements.operation}</span>
-          <select name="type" defaultValue={sp.type ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+          <select name="type" defaultValue={sp.type ?? ''} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white">
             <option value="">{dict.movements.allOperations}</option>
             {Object.entries(movementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
-        <label className="text-sm text-slate-600">
+        <label className="text-sm text-slate-600 w-full sm:w-auto">
           <span className="block mb-1.5 font-medium">{dict.movements.warehouse}</span>
-          <select name="warehouse" defaultValue={sp.warehouse ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+          <select name="warehouse" defaultValue={sp.warehouse ?? ''} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white">
             <option value="">{dict.movements.allWarehouses}</option>
             {Object.entries(warehouseLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
-        <label className="text-sm text-slate-600">
+        <label className="text-sm text-slate-600 w-full sm:w-auto">
           <span className="block mb-1.5 font-medium">{dict.movements.source}</span>
-          <select name="source" defaultValue={sp.source ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+          <select name="source" defaultValue={sp.source ?? ''} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white">
             <option value="">{dict.movements.allSources}</option>
             {CONSUMABLE_SOURCES.map(src => <option key={src} value={src}>{sourceLabel(dict, src)}</option>)}
           </select>
         </label>
-        <label className="text-sm text-slate-600">
+        <label className="text-sm text-slate-600 w-full sm:w-auto">
           <span className="block mb-1.5 font-medium">{dict.movements.employee}</span>
-          <select name="user" defaultValue={sp.user ?? ''} className="px-3 py-2 border border-slate-300 rounded-lg bg-white max-w-48">
+          <select name="user" defaultValue={sp.user ?? ''} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white sm:max-w-48">
             <option value="">{dict.movements.allEmployees}</option>
             {users?.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
           </select>
         </label>
-        <label className="text-sm text-slate-600">
-          <span className="block mb-1.5 font-medium">{dict.movements.fromDate}</span>
-          <input name="from" type="date" defaultValue={from} className="px-3 py-2 border border-slate-300 rounded-lg" />
-        </label>
-        <label className="text-sm text-slate-600">
-          <span className="block mb-1.5 font-medium">{dict.movements.toDate}</span>
-          <input name="to" type="date" defaultValue={to} className="px-3 py-2 border border-slate-300 rounded-lg" />
-        </label>
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.movements.apply}</button>
-        {(sp.consumable || sp.user || sp.type || sp.warehouse || sp.source || from || to) && (
-          <a href={`/${lang}/movements`} className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm rounded-lg">{dict.movements.reset}</a>
-        )}
+        <div className="grid grid-cols-2 gap-3 w-full sm:contents">
+          <label className="text-sm text-slate-600 w-full sm:w-auto">
+            <span className="block mb-1.5 font-medium">{dict.movements.fromDate}</span>
+            <input name="from" type="date" defaultValue={from} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg" />
+          </label>
+          <label className="text-sm text-slate-600 w-full sm:w-auto">
+            <span className="block mb-1.5 font-medium">{dict.movements.toDate}</span>
+            <input name="to" type="date" defaultValue={to} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg" />
+          </label>
+        </div>
+        <div className="flex gap-3 w-full sm:w-auto">
+          <button className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.movements.apply}</button>
+          {(sp.consumable || sp.user || sp.type || sp.warehouse || sp.source || from || to) && (
+            <a href={`/${lang}/movements`} className="flex-1 sm:flex-none text-center px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm rounded-lg">{dict.movements.reset}</a>
+          )}
+        </div>
       </form>
 
       <div className="grid grid-cols-2 gap-4">

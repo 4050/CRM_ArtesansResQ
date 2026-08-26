@@ -127,7 +127,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
           <h2 className="font-semibold text-slate-800">{dict.calls.form.callInfo}</h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.calls.form.date}</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
@@ -140,7 +140,7 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.calls.form.vehicle} <span className="text-red-500">*</span></label>
               <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}

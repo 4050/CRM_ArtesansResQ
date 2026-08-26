@@ -55,7 +55,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, closeMenuL
 
   return (
     <>
-      <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+      <div className={cn('p-5 border-b border-slate-200 flex items-center justify-between', onClose && 'pt-safe')}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
             <Ambulance className="w-5 h-5 text-white" />
@@ -66,7 +66,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, closeMenuL
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} aria-label={closeMenuLabel} className="p-1 text-slate-400 hover:text-slate-600 md:hidden">
+          <button onClick={onClose} aria-label={closeMenuLabel} className="p-2.5 -m-1.5 text-slate-400 hover:text-slate-600 md:hidden">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -102,7 +102,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, closeMenuL
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 space-y-3">
+      <div className={cn('p-4 border-t border-slate-200 space-y-3', onClose && 'pb-safe')}>
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-600">
             {userName.charAt(0).toUpperCase()}
@@ -114,7 +114,7 @@ function NavContent({ lang, userName, role, nav, appName, appTagline, closeMenuL
         </div>
         <button
           onClick={onLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full text-left text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 w-full text-left text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
           {nav.logout}
@@ -156,9 +156,11 @@ export default function Sidebar({ lang, userName, role, nav, appName, appTagline
         <NavContent lang={lang} userName={userName} role={role} nav={nav} appName={appName} appTagline={appTagline} openMenuLabel={openMenuLabel} closeMenuLabel={closeMenuLabel} onLogout={handleLogout} />
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 flex items-center justify-between px-4 h-14">
-        <button onClick={() => setOpen(true)} aria-label={openMenuLabel} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+      {/* Mobile top bar - height grows by the notch inset (pt-safe) so the
+          fixed h-14 bar never sits under a phone's status bar/camera
+          cutout; (app)/layout.tsx offsets its main content to match. */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 flex items-center justify-between px-2 h-[calc(3.5rem+env(safe-area-inset-top))] pt-safe">
+        <button onClick={() => setOpen(true)} aria-label={openMenuLabel} className="p-2.5 -m-0.5 text-slate-600 hover:bg-slate-100 rounded-lg">
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
@@ -167,7 +169,7 @@ export default function Sidebar({ lang, userName, role, nav, appName, appTagline
           </div>
           <span className="font-bold text-slate-900 text-sm">{appName}</span>
         </div>
-        <Link href={`/${lang}/calls/new`} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+        <Link href={`/${lang}/calls/new`} className="p-2.5 -m-0.5 text-red-600 hover:bg-red-50 rounded-lg">
           <Plus className="w-5 h-5" />
         </Link>
       </header>

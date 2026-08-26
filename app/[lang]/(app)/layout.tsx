@@ -38,8 +38,8 @@ export default async function AppLayout({
         openMenuLabel={dict.common.openMenu}
         closeMenuLabel={dict.common.closeMenu}
       />
-      <main className="flex-1 md:ml-64 overflow-auto pt-14 md:pt-0">
-        <div className="p-4 md:p-8">{children}</div>
+      <main className="flex-1 md:ml-64 overflow-auto pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0">
+        <div className="p-4 md:p-8 pb-safe md:pb-8">{children}</div>
       </main>
     </div>
   )

@@ -48,16 +48,18 @@ export default async function ReportsPage({
         <p className="text-sm text-slate-500 mt-1">{dict.reports.subtitle}</p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 bg-white border border-slate-200 rounded-xl p-4">
-        <label className="text-sm text-slate-600">
-          <span className="block mb-1.5 font-medium">{dict.reports.fromDate}</span>
-          <input name="from" type="date" defaultValue={from} className="px-3 py-2 border border-slate-300 rounded-lg" />
-        </label>
-        <label className="text-sm text-slate-600">
-          <span className="block mb-1.5 font-medium">{dict.reports.toDate}</span>
-          <input name="to" type="date" defaultValue={to} className="px-3 py-2 border border-slate-300 rounded-lg" />
-        </label>
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.reports.generate}</button>
+      <form className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 bg-white border border-slate-200 rounded-xl p-4">
+        <div className="grid grid-cols-2 gap-3 w-full sm:contents">
+          <label className="text-sm text-slate-600 w-full sm:w-auto">
+            <span className="block mb-1.5 font-medium">{dict.reports.fromDate}</span>
+            <input name="from" type="date" defaultValue={from} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg" />
+          </label>
+          <label className="text-sm text-slate-600 w-full sm:w-auto">
+            <span className="block mb-1.5 font-medium">{dict.reports.toDate}</span>
+            <input name="to" type="date" defaultValue={to} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg" />
+          </label>
+        </div>
+        <button className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-lg">{dict.reports.generate}</button>
         {!validRange && <span className="text-sm text-red-600">{dict.reports.invalidRange}</span>}
       </form>
 

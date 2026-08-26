@@ -1,10 +1,19 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import '../globals.css'
 import { getDictionary, hasLocale, locales } from './dictionaries'
 import { notFound } from 'next/navigation'
 
 export function generateStaticParams() {
   return locales.map((lang) => ({ lang }))
+}
+
+// Colors the mobile browser's own chrome (address bar / status bar) to
+// match the app instead of leaving it default gray, and pins colorScheme to
+// light so mobile OSes don't auto-invert form controls into a mismatched
+// dark theme this app doesn't otherwise support.
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
+  colorScheme: 'light',
 }
 
 export async function generateMetadata({

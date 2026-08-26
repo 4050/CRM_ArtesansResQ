@@ -599,7 +599,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
             </button>
           </>}
         >
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.codeOptional}</label>
                   <input
@@ -609,7 +609,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                     placeholder={dict.inventory.codePlaceholder}
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.name}</label>
                   <input
                     value={form.name}
@@ -630,7 +630,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.inventory.category}</label>
                   <select
@@ -653,7 +653,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     {modal === 'add' ? dict.inventory.openingStock : dict.inventory.currentStockLabel}

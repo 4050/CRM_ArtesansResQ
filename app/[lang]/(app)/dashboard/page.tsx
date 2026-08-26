@@ -113,11 +113,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
           </div>
           <div className="divide-y divide-slate-100">
             {lowStockItems.map(item => (
-              <div key={item.id} className="px-5 py-3 flex items-center justify-between">
-                <span className="text-sm text-slate-800">{item.consumable?.name}</span>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-red-600 font-medium">{dict.dashboard.inStockShort}: {item.qty_in_stock} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</span>
-                  <span className="text-slate-400">{dict.dashboard.minShort}: {item.consumable?.qty_minimum ?? 0}</span>
+              <div key={item.id} className="px-5 py-3 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+                <span className="text-sm text-slate-800 truncate">{item.consumable?.name}</span>
+                <div className="flex items-center gap-4 text-sm shrink-0">
+                  <span className="text-red-600 font-medium whitespace-nowrap">{dict.dashboard.inStockShort}: {item.qty_in_stock} {item.consumable ? unitLabel(dict, item.consumable.unit) : ''}</span>
+                  <span className="text-slate-400 whitespace-nowrap">{dict.dashboard.minShort}: {item.consumable?.qty_minimum ?? 0}</span>
                 </div>
               </div>
             ))}

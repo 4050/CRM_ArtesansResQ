@@ -914,6 +914,12 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
+    -- A deleted consumable's writeoffs keep their row with consumable_id set
+    -- to null (see 202607230001) - there's nothing to return to team_stock
+    -- for those (the team_stock row itself is long gone, cascade-deleted
+    -- alongside the consumable), and adjust_team_stock(null, ...) would
+    -- violate team_stock's not-null consumable_id/organization_id columns.
+    continue when item.consumable_id is null;
     perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 
@@ -979,6 +985,8 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
+    -- Same guard as update_call_with_writeoffs above.
+    continue when item.consumable_id is null;
     perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 

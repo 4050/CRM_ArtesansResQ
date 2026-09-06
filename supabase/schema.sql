@@ -346,22 +346,34 @@ security definer set search_path = ''
 as $$
 declare
   updated public.consumables;
+  current_qty integer;
+  item_name text;
 begin
+  -- The qty_in_stock + p_delta >= 0 guard belongs in the UPDATE's WHERE
+  -- clause, not as a check on the result afterwards - consumables.qty_in_stock
+  -- has a "check (qty_in_stock >= 0)" constraint (see schema.sql's create
+  -- table), so an UPDATE that would drive it negative fails outright with a
+  -- raw constraint-violation error before this function ever gets to raise
+  -- its own friendlier one. Same fix already applied to adjust_team_stock's
+  -- equivalent guard.
   update public.consumables
   set qty_in_stock = qty_in_stock + p_delta
-  where id = p_consumable_id
+  where id = p_consumable_id and qty_in_stock + p_delta >= 0
   returning * into updated;
 
-  if not found then
+  if found then
+    return updated;
+  end if;
+
+  select qty_in_stock, name into current_qty, item_name
+  from public.consumables where id = p_consumable_id;
+
+  if current_qty is null then
     raise exception 'Consumable % not found', p_consumable_id;
   end if;
 
-  if updated.qty_in_stock < 0 then
-    raise exception 'Not enough "%" in stock (in stock: %, requested: %)',
-      updated.name, updated.qty_in_stock - p_delta, -p_delta;
-  end if;
-
-  return updated;
+  raise exception 'Not enough "%" in stock (in stock: %, requested: %)',
+    item_name, current_qty, -p_delta;
 end;
 $$;
 
@@ -914,6 +926,12 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
+    -- A deleted consumable's writeoffs keep their row with consumable_id set
+    -- to null (see 202607230001) - there's nothing to return to team_stock
+    -- for those (the team_stock row itself is long gone, cascade-deleted
+    -- alongside the consumable), and adjust_team_stock(null, ...) would
+    -- violate team_stock's not-null consumable_id/organization_id columns.
+    continue when item.consumable_id is null;
     perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 
@@ -979,6 +997,8 @@ begin
     where call_id = p_call_id and organization_id = v_org_id
     group by consumable_id
   loop
+    -- Same guard as update_call_with_writeoffs above.
+    continue when item.consumable_id is null;
     perform public.adjust_team_stock(item.consumable_id, item.quantity);
   end loop;
 

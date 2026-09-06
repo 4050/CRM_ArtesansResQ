@@ -21,6 +21,22 @@ begin
 end
 $$;
 
+-- A real Supabase project pre-grants baseline table privileges to
+-- "authenticated" platform-wide - CREATE POLICY ... TO authenticated only
+-- ever narrows which rows are visible on top of a privilege that must
+-- already exist, it grants no table-level access by itself. schema.sql
+-- doesn't grant these itself because it assumes that platform default is
+-- already there; this bare postgres instance has no such default, so
+-- replicate it here, before schema.sql creates any tables, via ALTER
+-- DEFAULT PRIVILEGES so every public.* table it goes on to create picks
+-- this up automatically. Without this, a test that runs a query directly
+-- as "authenticated" (see tests/08_restrict_access.test.sql) would fail
+-- with "permission denied for table ..." rather than actually exercising
+-- RLS.
+grant usage on schema public to authenticated;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+
 create schema if not exists auth;
 
 create table auth.users (

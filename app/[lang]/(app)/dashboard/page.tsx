@@ -6,7 +6,7 @@ import { unitLabel } from '@/lib/consumable-labels'
 import { getCallsCountSince, getRecentCalls } from '@/lib/data/calls'
 import { getStockLevels } from '@/lib/data/consumables'
 import { getTeamStock } from '@/lib/data/team-stock'
-import { getWriteoffsSince } from '@/lib/data/writeoffs'
+import { getWriteoffsTotalSince } from '@/lib/data/writeoffs'
 import { getProfile } from '@/lib/data/users'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
@@ -28,18 +28,17 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
   // the team actually is).
   const todayIso = startOfDayIso('Europe/Kyiv')
 
-  const [callsToday, recentCalls, teamStock, writeoffsToday, profile] = await Promise.all([
+  const [callsToday, recentCalls, teamStock, totalWrittenOff, profile] = await Promise.all([
     getCallsCountSince(todayIso),
     getRecentCalls(5),
     getTeamStock(),
-    getWriteoffsSince(todayIso),
+    getWriteoffsTotalSince(todayIso),
     getProfile(userId!),
   ])
 
   const isAdmin = isAdminRole(profile?.role)
   const mainStockLevels = isAdmin ? await getStockLevels() : []
 
-  const totalWrittenOff = writeoffsToday.reduce((s, w) => s + w.quantity, 0)
   const lowStockItems = teamStock.filter(item => isLowStock(item.qty_in_stock, item.consumable?.qty_minimum ?? 0))
   const mainLowStockCount = mainStockLevels.filter(c => isLowStock(c.qty_in_stock, c.qty_minimum)).length
 

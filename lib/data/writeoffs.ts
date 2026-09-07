@@ -99,14 +99,15 @@ export async function getWriteoffs(filters: WriteoffListFilters = {}): Promise<W
   return { rows: z.array(writeoffRowSchema).parse(data ?? []), count: count ?? 0, page, pageSize }
 }
 
-export async function getWriteoffsSince(isoDate: string): Promise<{ quantity: number }[]> {
+// Aggregated in SQL (writeoffs_total_since), not fetched as raw rows and
+// summed in JS - same reasoning as getWriteoffsInRange below: a day with
+// more write-off rows than PostgREST's default page size would otherwise
+// silently under-count.
+export async function getWriteoffsTotalSince(isoDate: string): Promise<number> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('writeoffs')
-    .select('quantity')
-    .gte('created_at', isoDate)
+  const { data, error } = await supabase.rpc('writeoffs_total_since', { p_since: isoDate })
   if (error) throw new Error(error.message)
-  return data ?? []
+  return data ?? 0
 }
 
 // Aggregated in SQL (writeoffs_report) rather than fetched as raw rows and

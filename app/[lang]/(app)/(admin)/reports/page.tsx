@@ -1,11 +1,24 @@
 import { BarChart3, CalendarDays, Package, Users } from 'lucide-react'
 import { getWriteoffsInRange } from '@/lib/data/writeoffs'
 import { unitLabel, categoryLabel, sourceLabel } from '@/lib/consumable-labels'
+import { dateInputStartOfDayIso, dateInputEndOfDayIso } from '@/lib/utils'
+import { ORG_TIMEZONE } from '@/lib/timezone'
 import { getDictionary, hasLocale } from '../../../dictionaries'
 import { notFound } from 'next/navigation'
 
+// "YYYY-MM-DD" for `date`'s calendar date in the org's timezone (see
+// lib/timezone.ts), for a <input type="date"> default value - not the
+// server's timezone, which date.toISOString().slice(0, 10) would silently
+// use instead.
 function toDateInput(date: Date) {
-  return date.toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ORG_TIMEZONE }).format(date)
+}
+
+// Shape + parseability check on the raw "from"/"to" query params before
+// they're fed into the org-timezone conversion below - decoupled from that
+// conversion on purpose, since it doesn't need to know about any timezone.
+function isValidDateInput(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime())
 }
 
 export default async function ReportsPage({
@@ -21,15 +34,14 @@ export default async function ReportsPage({
 
   const sp = await searchParams
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const from = sp.from ?? toDateInput(monthStart)
-  const to = sp.to ?? toDateInput(now)
-  const fromDate = new Date(`${from}T00:00:00`)
-  const toDate = new Date(`${to}T23:59:59.999`)
-  const validRange = !Number.isNaN(fromDate.getTime()) && !Number.isNaN(toDate.getTime()) && fromDate <= toDate
+  const todayInput = toDateInput(now)
+  const monthStartInput = `${todayInput.slice(0, 7)}-01`
+  const from = sp.from ?? monthStartInput
+  const to = sp.to ?? todayInput
+  const validRange = isValidDateInput(from) && isValidDateInput(to) && from <= to
 
   const report = validRange
-    ? await getWriteoffsInRange(fromDate.toISOString(), toDate.toISOString())
+    ? await getWriteoffsInRange(dateInputStartOfDayIso(from, ORG_TIMEZONE), dateInputEndOfDayIso(to, ORG_TIMEZONE))
     : { operations: 0, totalQuantity: 0, employees: 0, byConsumable: [] }
 
   const { operations, totalQuantity, employees } = report

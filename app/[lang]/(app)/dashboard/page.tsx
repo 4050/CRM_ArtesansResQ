@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AlertTriangle, Phone, Package, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDateTime, isLowStock, startOfDayIso } from '@/lib/utils'
+import { ORG_TIMEZONE } from '@/lib/timezone'
 import { unitLabel } from '@/lib/consumable-labels'
 import { getCallsCountSince, getRecentCalls } from '@/lib/data/calls'
 import { getStockLevels } from '@/lib/data/consumables'
@@ -21,12 +22,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims.sub
 
-  // No per-org timezone setting exists yet - every organization using this
-  // app today is Ukraine-based, so the "today" boundary for the stat cards
-  // below is computed in that zone rather than the server's (which
-  // defaults to UTC on most hosts, putting midnight hours off from where
-  // the team actually is).
-  const todayIso = startOfDayIso('Europe/Kyiv')
+  // See lib/timezone.ts - the "today" boundary for the stat cards below is
+  // computed in the org's zone rather than the server's (which defaults to
+  // UTC on most hosts, putting midnight hours off from where the team
+  // actually is).
+  const todayIso = startOfDayIso(ORG_TIMEZONE)
 
   const [callsToday, recentCalls, teamStock, totalWrittenOff, profile] = await Promise.all([
     getCallsCountSince(todayIso),

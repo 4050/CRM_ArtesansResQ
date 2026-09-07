@@ -8,7 +8,7 @@ import type { Vehicle, Bag, WriteoffInput } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn, clampQuantityInput } from '@/lib/utils'
+import { cn, clampQuantityInput, toLocalDateInputValue, toLocalTimeInputValue } from '@/lib/utils'
 import ConsumablePicker from '@/components/calls/ConsumablePicker'
 
 interface Props {
@@ -24,8 +24,8 @@ export default function NewCallForm({ lang, dict, vehicles, bags, consumables, c
   const router = useRouter()
 
   const now = new Date()
-  const todayDate = now.toISOString().split('T')[0]
-  const nowTime = now.toTimeString().slice(0, 5)
+  const todayDate = toLocalDateInputValue(now)
+  const nowTime = toLocalTimeInputValue(now)
 
   const [date, setDate] = useState(todayDate)
   const [time, setTime] = useState(nowTime)

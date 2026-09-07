@@ -137,3 +137,26 @@ export function clampNonNegativeInt(raw: string): number {
   const n = Number(raw)
   return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0
 }
+
+// "YYYY-MM-DD" from `d`'s *local* date components (getFullYear/getMonth/
+// getDate), for a <input type="date"> value - not `d.toISOString().
+// slice(0, 10)`, which reads the UTC date instead and can be a day behind
+// local for several hours after local midnight in any zone ahead of UTC
+// (this runs client-side, in whichever timezone the medic's own browser is
+// set to). Pair with toLocalTimeInputValue below - never one of these with
+// the other's ISO/UTC equivalent, or the date and time end up read from
+// two different calendar days.
+export function toLocalDateInputValue(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// "HH:MM" from `d`'s local time components, for a <input type="time">
+// value - see toLocalDateInputValue above.
+export function toLocalTimeInputValue(d: Date): string {
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}

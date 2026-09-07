@@ -8,7 +8,7 @@ import type { Vehicle, Bag, WriteoffInput } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn, clampQuantityInput } from '@/lib/utils'
+import { cn, clampQuantityInput, toLocalDateInputValue, toLocalTimeInputValue } from '@/lib/utils'
 import ConsumablePicker from '@/components/calls/ConsumablePicker'
 
 type ExistingWriteoff = {
@@ -38,8 +38,8 @@ export default function EditCallForm({ lang, dict, call, vehicles, bags, consuma
   const router = useRouter()
 
   const existingDate = new Date(call.date)
-  const [date, setDate] = useState(existingDate.toISOString().split('T')[0])
-  const [time, setTime] = useState(existingDate.toTimeString().slice(0, 5))
+  const [date, setDate] = useState(toLocalDateInputValue(existingDate))
+  const [time, setTime] = useState(toLocalTimeInputValue(existingDate))
   const [description, setDescription] = useState(call.description ?? '')
   const [vehicleId, setVehicleId] = useState(call.vehicle_id)
   const [bagId, setBagId] = useState(call.bag_id)

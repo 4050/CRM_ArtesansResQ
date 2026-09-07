@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History } from 'lucide-react'
-import { formatDateTime, computeTotalPages } from '@/lib/utils'
+import { formatDateTime, computeTotalPages, dateInputStartOfDayIso, dateInputEndOfDayIso } from '@/lib/utils'
+import { ORG_TIMEZONE } from '@/lib/timezone'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'
@@ -72,8 +73,8 @@ export default async function MovementsPage({
       type: sp.type && sp.type in movementLabels ? sp.type : undefined,
       warehouse: sp.warehouse === 'main' || sp.warehouse === 'team' ? sp.warehouse : undefined,
       source: sp.source && (CONSUMABLE_SOURCES as string[]).includes(sp.source) ? sp.source : undefined,
-      fromIso: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
-      toIso: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
+      fromIso: from ? dateInputStartOfDayIso(from, ORG_TIMEZONE) : undefined,
+      toIso: to ? dateInputEndOfDayIso(to, ORG_TIMEZONE) : undefined,
       page,
     }),
     getConsumableNameOptions(),

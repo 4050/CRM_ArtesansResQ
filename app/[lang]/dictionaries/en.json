@@ -429,6 +429,8 @@
     "forbidden": "You don't have permission to manage users.",
     "cannotTargetSelf": "You can't do this to your own account.",
     "cannotTargetMasterAdmin": "The master admin's account can't be restricted or deleted.",
-    "notFound": "User not found in your organization."
+    "notFound": "User not found in your organization.",
+    "activeChangeFailed": "Failed to fully apply this change — nothing was changed, please try again.",
+    "activeChangeInconsistent": "This account may be left in an inconsistent state — please check it manually before retrying."
   }
 }

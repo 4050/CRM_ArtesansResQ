@@ -9,7 +9,7 @@
 -- ('pgtap-marker-call-1') rather than a captured id, so no psql variable
 -- capture (\gset) is needed - keeps this file plain, portable SQL.
 begin;
-select plan(23);
+select plan(34);
 
 -- An org B vehicle, used only to prove update_call_with_writeoffs rejects a
 -- cross-org p_vehicle_id (see create_call_with_writeoffs's equivalent
@@ -194,6 +194,86 @@ select lives_ok(
 select lives_ok(
   $$ select public.delete_call_with_writeoffs((select id from public.calls where description = 'pgtap-marker-deleted-b')) $$,
   'deleting a call whose write-off references a deleted consumable no longer crashes on returning stock'
+);
+
+-- Regression for 202609070001_diff_based_writeoff_edit.sql: editing a call
+-- must not reset an unrelated line's attribution or generate a phantom
+-- stock_movements pair for a quantity that didn't actually change, and a
+-- genuine quantity change must move stock by only the delta - not "return
+-- the old amount, then reissue the new one" (2 movements instead of 1).
+select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
+
+insert into public.consumables (id, code, name, unit, qty_in_stock, qty_minimum, organization_id)
+values ('cccccccc-0000-0000-0000-000000000006', 'TST-006', 'Diff Test Dressing', 'pcs', 50, 0, 'aaaaaaaa-0000-0000-0000-000000000001');
+
+select lives_ok(
+  $$ select public.transfer_to_team_stock('cccccccc-0000-0000-0000-000000000006'::uuid, 20) $$,
+  'admin seeds team stock for the diff-based-edit tests'
+);
+
+select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000003');
+select lives_ok(
+  $$ select public.create_call_with_writeoffs(
+       now(), 'pgtap-marker-diff-1', 'dddddddd-0000-0000-0000-000000000001'::uuid, 'eeeeeeee-0000-0000-0000-000000000001'::uuid,
+       jsonb_build_array(jsonb_build_object('consumable_id', 'cccccccc-0000-0000-0000-000000000006', 'quantity', 4))
+     ) $$,
+  'medic creates a call writing off 4 of the diff-test item'
+);
+select is(
+  (select count(*)::int from public.stock_movements where consumable_id = 'cccccccc-0000-0000-0000-000000000006'::uuid and warehouse = 'team'),
+  2,
+  'baseline: 2 team-stock movements so far (seed increase + write-off decrease)'
+);
+
+-- admin edits only the call's own description - quantity/consumable untouched
+select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
+select lives_ok(
+  $$ select public.update_call_with_writeoffs(
+       (select id from public.calls where description = 'pgtap-marker-diff-1'),
+       now(), 'pgtap-marker-diff-1-renamed', 'dddddddd-0000-0000-0000-000000000001'::uuid, 'eeeeeeee-0000-0000-0000-000000000001'::uuid,
+       jsonb_build_array(jsonb_build_object('consumable_id', 'cccccccc-0000-0000-0000-000000000006', 'quantity', 4))
+     ) $$,
+  'admin renames the call without changing its write-offs'
+);
+select is(
+  (select user_id from public.writeoffs where call_id = (select id from public.calls where description = 'pgtap-marker-diff-1-renamed')),
+  'bbbbbbbb-0000-0000-0000-000000000003'::uuid,
+  'the write-off''s attribution stays with the original medic, not the admin who edited the call'
+);
+select is(
+  (select count(*)::int from public.stock_movements where consumable_id = 'cccccccc-0000-0000-0000-000000000006'::uuid and warehouse = 'team'),
+  2,
+  'no new stock movement is generated when a write-off''s quantity does not actually change'
+);
+
+-- admin now changes the quantity itself: 4 -> 6
+select lives_ok(
+  $$ select public.update_call_with_writeoffs(
+       (select id from public.calls where description = 'pgtap-marker-diff-1-renamed'),
+       now(), 'pgtap-marker-diff-1-renamed', 'dddddddd-0000-0000-0000-000000000001'::uuid, 'eeeeeeee-0000-0000-0000-000000000001'::uuid,
+       jsonb_build_array(jsonb_build_object('consumable_id', 'cccccccc-0000-0000-0000-000000000006', 'quantity', 6))
+     ) $$,
+  'admin increases the write-off quantity from 4 to 6'
+);
+select is(
+  (select quantity from public.writeoffs where call_id = (select id from public.calls where description = 'pgtap-marker-diff-1-renamed')),
+  6,
+  'the write-off row is updated in place to the new quantity'
+);
+select is(
+  (select user_id from public.writeoffs where call_id = (select id from public.calls where description = 'pgtap-marker-diff-1-renamed')),
+  'bbbbbbbb-0000-0000-0000-000000000003'::uuid,
+  'a quantity-only change still keeps the original medic''s attribution'
+);
+select is(
+  (select qty_in_stock from public.team_stock where consumable_id = 'cccccccc-0000-0000-0000-000000000006'::uuid),
+  14,
+  'team stock reflects only the +2 delta (20 seeded - 4 original - 2 more)'
+);
+select is(
+  (select count(*)::int from public.stock_movements where consumable_id = 'cccccccc-0000-0000-0000-000000000006'::uuid and warehouse = 'team'),
+  3,
+  'exactly one new movement for the delta, not a return-then-reissue pair'
 );
 
 select * from finish();

@@ -1081,3 +1081,23 @@ $$;
 
 revoke all on function public.writeoffs_report(timestamptz, timestamptz) from public;
 grant execute on function public.writeoffs_report(timestamptz, timestamptz) to authenticated;
+
+-- Sums write-off quantity since a given instant in one SQL aggregate, same
+-- reasoning as writeoffs_report above - the dashboard's "written off today"
+-- stat used to fetch every matching row (lib/data/writeoffs.ts's
+-- getWriteoffsSince) and sum them in JS, with no limit of its own on how
+-- many rows that could be. See 202609070002.
+create or replace function public.writeoffs_total_since(p_since timestamptz)
+returns integer
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(sum(quantity), 0)::integer
+  from public.writeoffs
+  where organization_id = public.current_org_id()
+    and created_at >= p_since;
+$$;
+
+revoke all on function public.writeoffs_total_since(timestamptz) from public;
+grant execute on function public.writeoffs_total_since(timestamptz) to authenticated;

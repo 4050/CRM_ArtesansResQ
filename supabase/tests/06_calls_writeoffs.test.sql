@@ -9,7 +9,7 @@
 -- ('pgtap-marker-call-1') rather than a captured id, so no psql variable
 -- capture (\gset) is needed - keeps this file plain, portable SQL.
 begin;
-select plan(34);
+select plan(36);
 
 -- An org B vehicle, used only to prove update_call_with_writeoffs rejects a
 -- cross-org p_vehicle_id (see create_call_with_writeoffs's equivalent
@@ -274,6 +274,22 @@ select is(
   (select count(*)::int from public.stock_movements where consumable_id = 'cccccccc-0000-0000-0000-000000000006'::uuid and warehouse = 'team'),
   3,
   'exactly one new movement for the delta, not a return-then-reissue pair'
+);
+
+-- writeoffs_total_since (202609070002): sums in one SQL aggregate instead
+-- of the caller fetching every matching row. By this point in the file the
+-- only surviving write-off in org A is the diff-test one above, at its
+-- final quantity of 6 (every other call created earlier in this file was
+-- deleted, cascading its write-offs away too).
+select is(
+  public.writeoffs_total_since('1970-01-01T00:00:00Z'::timestamptz),
+  6,
+  'writeoffs_total_since sums every surviving write-off in this org'
+);
+select is(
+  public.writeoffs_total_since(now() + interval '1 day'),
+  0,
+  'writeoffs_total_since is 0, not null, when nothing matches'
 );
 
 select * from finish();

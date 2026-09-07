@@ -62,10 +62,13 @@ jobs:
           sudo -u postgres psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
           sudo -u postgres psql -v ON_ERROR_STOP=1 -f supabase/tests/01_fixtures.sql
 
+      # pg_prove (not plain psql) is what makes a failing assertion actually
+      # fail this job: pgTAP's ok()/is()/etc. report "not ok" as plain SELECT
+      # result rows, not SQL errors - `psql -v ON_ERROR_STOP=1` has nothing to
+      # stop on and exits 0 either way. pg_prove parses the TAP output itself
+      # and exits non-zero on any failed test.
+      - name: Install pg_prove
+        run: sudo apt-get install -y libtap-parser-sourcehandler-pgtap-perl
+
       - name: Run pgTAP tests
-        run: |
-          for f in supabase/tests/*.test.sql; do
-            echo "::group::$f"
-            sudo -u postgres psql -v ON_ERROR_STOP=1 -f "$f"
-            echo "::endgroup::"
-          done
+        run: sudo -u postgres pg_prove -U postgres -d postgres --verbose supabase/tests/*.test.sql

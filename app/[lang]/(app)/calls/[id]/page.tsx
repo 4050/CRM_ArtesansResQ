@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Truck, ShoppingBag, User, FileText, Package, Pencil } from 'lucide-react'
 import { formatDateTime, toBCP47 } from '@/lib/utils'
+import { ORG_TIMEZONE } from '@/lib/timezone'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
 import { getCallDetail } from '@/lib/data/calls'
 import { getProfile } from '@/lib/data/users'
@@ -84,7 +85,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
             <div>
               <div className="text-xs text-slate-400 mb-0.5">{dict.calls.detail.date}</div>
               <div className="text-sm font-medium text-slate-800">
-                {date.toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' })}
+                {date.toLocaleDateString(dateLocale, { timeZone: ORG_TIMEZONE, day: '2-digit', month: 'long', year: 'numeric' })}
               </div>
             </div>
           </div>
@@ -95,7 +96,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
             <div>
               <div className="text-xs text-slate-400 mb-0.5">{dict.calls.detail.time}</div>
               <div className="text-sm font-medium text-slate-800">
-                {date.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
+                {date.toLocaleTimeString(dateLocale, { timeZone: ORG_TIMEZONE, hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, dateInputStartOfDayIso, dateInputEndOfDayIso, clampQuantityInput, clampNonNegativeInt } from './utils'
+import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, dateInputStartOfDayIso, dateInputEndOfDayIso, clampQuantityInput, clampNonNegativeInt, toLocalDateInputValue, toLocalTimeInputValue } from './utils'
 import { ORG_TIMEZONE } from './timezone'
 
 describe('cn', () => {
@@ -175,6 +175,29 @@ describe('clampNonNegativeInt', () => {
     expect(clampNonNegativeInt('')).toBe(0)
     expect(clampNonNegativeInt('-')).toBe(0)
     expect(clampNonNegativeInt('abc')).toBe(0)
+  })
+})
+
+describe('toLocalDateInputValue / toLocalTimeInputValue', () => {
+  // Regression test: NewCallForm/EditCallForm used to pair
+  // `d.toISOString().split('T')[0]` (UTC date) with `d.toTimeString().
+  // slice(0, 5)` (local time) - two different calendar days for several
+  // hours after local midnight in any zone ahead of UTC, e.g. a call made
+  // at 01:30 local defaulted to *yesterday's* date. Both values must come
+  // from the same (local) reference frame.
+  it('reads the date from local, not UTC, components', () => {
+    // Constructed via the local-time Date constructor, so this is
+    // deterministic regardless of which timezone the test runner itself
+    // is in - local components in, local components back out.
+    const d = new Date(2026, 8, 5, 1, 30) // 2026-09-05 01:30 local
+    expect(toLocalDateInputValue(d)).toBe('2026-09-05')
+    expect(toLocalTimeInputValue(d)).toBe('01:30')
+  })
+
+  it('pads single-digit month/day/hour/minute', () => {
+    const d = new Date(2026, 0, 5, 4, 5) // 2026-01-05 04:05 local
+    expect(toLocalDateInputValue(d)).toBe('2026-01-05')
+    expect(toLocalTimeInputValue(d)).toBe('04:05')
   })
 })
 

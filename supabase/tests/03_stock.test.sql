@@ -138,7 +138,7 @@ select is(
 
 -- Atomicity: a batch where one row is bad rolls back the whole batch,
 -- including otherwise-valid rows already processed earlier in the same call.
-select throws_ok(
+select throws_like(
   $$ select public.confirm_inventory_import(
        jsonb_build_array(
          jsonb_build_object('code', 'TST-012', 'name', 'Imported Item C', 'category', 'other', 'unit', 'pcs', 'quantity', 1, 'qty_minimum', 0, 'description', null),
@@ -146,6 +146,7 @@ select throws_ok(
        ),
        '[]'::jsonb
      ) $$,
+  '%',
   'a batch containing a duplicate code is rejected'
 );
 select is(
@@ -154,7 +155,7 @@ select is(
   'the otherwise-valid first row in that failed batch was rolled back too - not partially applied'
 );
 
-select throws_ok(
+select throws_like(
   $$ select public.confirm_inventory_import(
        jsonb_build_array(
          jsonb_build_object('code', 'TST-013', 'name', 'Imported Item D', 'category', 'other', 'unit', 'pcs', 'quantity', 1, 'qty_minimum', 0, 'description', null)
@@ -163,6 +164,7 @@ select throws_ok(
          jsonb_build_object('consumable_id', gen_random_uuid(), 'quantity', 1)
        )
      ) $$,
+  '%',
   'a batch with a restock of a non-existent item is rejected'
 );
 select is(

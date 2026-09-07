@@ -16,7 +16,7 @@ import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
-import { cn, clampNonNegativeInt } from '@/lib/utils'
+import { cn, clampNonNegativeInt, clampQuantityInput } from '@/lib/utils'
 import ImportExcelModal from './ImportExcelModal'
 
 interface Props {
@@ -482,7 +482,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 type="number"
                 min="1"
                 value={restockQty}
-                onChange={e => setRestockQty(Math.max(1, Number(e.target.value)))}
+                onChange={e => setRestockQty(clampQuantityInput(e.target.value))}
                 className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <button
@@ -552,7 +552,7 @@ export default function InventoryClient({ lang, dict, consumables: initial, isAd
                 min="1"
                 max={target.qty_in_stock}
                 value={issueQty}
-                onChange={e => setIssueQty(Math.max(1, Math.min(target.qty_in_stock, Number(e.target.value))))}
+                onChange={e => setIssueQty(Math.min(target.qty_in_stock, clampQuantityInput(e.target.value)))}
                 className="flex-1 text-center text-lg font-bold border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button

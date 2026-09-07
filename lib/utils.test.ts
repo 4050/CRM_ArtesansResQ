@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, dateInputStartOfDayIso, dateInputEndOfDayIso, clampQuantityInput, clampNonNegativeInt } from './utils'
+import { ORG_TIMEZONE } from './timezone'
 
 describe('cn', () => {
   it('merges classes and resolves Tailwind conflicts', () => {
@@ -34,9 +35,14 @@ describe('formatDateTime', () => {
     // numeric day/month/year/time format, so the meaningful assertion is
     // that formatting with 'uk' actually differs from formatting the same
     // instant with a hardcoded ru-RU locale would - i.e. the lang param is
-    // truly wired through rather than ignored.
+    // truly wired through rather than ignored. Reference computation needs
+    // the same explicit timeZone formatDateTime itself now uses - without
+    // it, this only coincidentally matched on a machine whose own local
+    // timezone happened to be ORG_TIMEZONE, and failed in CI (which runs
+    // in UTC).
     expect(() => formatDateTime(sample, 'uk')).not.toThrow()
     expect(formatDateTime(sample, 'uk')).toBe(new Date(sample).toLocaleString('uk-UA', {
+      timeZone: ORG_TIMEZONE,
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     }))
   })

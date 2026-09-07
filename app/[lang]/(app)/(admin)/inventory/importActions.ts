@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
 import { friendlyDbError } from '@/lib/action-errors'
+import { getProfile } from '@/lib/data/users'
+import { isAdminRole } from '@/lib/roles'
 import type { Consumable, ConsumableUnit } from '@/types'
 import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
 import { parseRawRow } from '@/lib/inventory-import'
@@ -45,7 +47,32 @@ export interface ImportPreview {
 // (and guards the action if it's ever invoked some other way).
 const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
+// Both actions in this file are only reachable via UI from /inventory,
+// which the (admin) route group's layout already gates - this is a
+// redundant, defense-in-depth check for the (Server Action) endpoint
+// itself, which Next.js exposes regardless of which page rendered it.
+// confirm_inventory_import's own admin check (see schema.sql) is what
+// actually matters; this just gives a friendlier, earlier error.
+async function requireAdmin(): Promise<{ error: string } | null> {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims.sub
+  const profile = userId ? await getProfile(userId) : null
+  if (!isAdminRole(profile?.role)) {
+    return { error: 'Only an administrator can import inventory' }
+  }
+  return null
+}
+
+// Excel files rarely run this large, but without a cap a malformed or
+// enormous sheet would parse every row before failing (or succeeding with
+// an unreasonably large single import) - fail fast with a clear reason.
+const MAX_IMPORT_ROWS = 2000
+
 export async function parseInventoryExcelAction(formData: FormData): Promise<{ data?: ImportPreview; error?: string }> {
+  const adminGuard = await requireAdmin()
+  if (adminGuard) return adminGuard
+
   const file = formData.get('file')
   if (!(file instanceof File)) return { error: 'No file uploaded' }
   if (file.size > MAX_IMPORT_FILE_SIZE) return { error: 'File is too large (max 10 MB)' }
@@ -63,12 +90,14 @@ export async function parseInventoryExcelAction(formData: FormData): Promise<{ d
 
   const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null })
   if (rawRows.length === 0) return { error: 'The sheet has no data rows' }
+  if (rawRows.length > MAX_IMPORT_ROWS) return { error: `Too many rows in the file (max ${MAX_IMPORT_ROWS})` }
 
   const supabase = await createClient()
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('consumables')
     .select('id, code, name, qty_in_stock')
     .eq('is_active', true)
+  if (existingError) return { error: existingError.message }
   const byCode = new Map(
     (existing ?? [])
       .filter((c): c is typeof c & { code: string } => !!c.code)
@@ -142,62 +171,59 @@ function validateCreateRow(row: ImportRow): string | null {
   if (!row.code.trim()) return 'Missing code'
   if (!row.name.trim()) return 'Missing name'
   if (!CONSUMABLE_UNITS.includes(row.unit)) return `Invalid unit "${row.unit}"`
-  if (!Number.isFinite(row.quantity) || row.quantity <= 0) return 'Quantity must be a positive number'
-  if (!Number.isFinite(row.qty_minimum) || row.qty_minimum < 0) return 'Minimum stock must be zero or a positive number'
+  if (!Number.isFinite(row.quantity) || !Number.isInteger(row.quantity) || row.quantity <= 0) {
+    return 'Quantity must be a positive whole number'
+  }
+  if (!Number.isFinite(row.qty_minimum) || !Number.isInteger(row.qty_minimum) || row.qty_minimum < 0) {
+    return 'Minimum stock must be a whole number, zero or greater'
+  }
   return null
 }
 
+// Applies the whole preview (new items + restocks) as a single transaction
+// via the confirm_inventory_import RPC - previously this ran as a separate
+// bulk insert followed by a restock_consumable loop, so a failure partway
+// left some rows already applied with no way for the caller to know which,
+// and no protection against a lost response re-applying an
+// already-succeeded restock on retry. Now either everything in the batch
+// is applied, or nothing is - one clear error names the first problem.
 export async function confirmInventoryImportAction(
   lang: Locale,
   payload: ImportConfirmPayload
 ): Promise<ImportConfirmResult> {
+  const adminGuard = await requireAdmin()
+  if (adminGuard) return { ...adminGuard, created: [], restocked: [] }
+
   for (const row of payload.toCreate) {
     const message = validateCreateRow(row)
     if (message) return { error: `Row ${row.rowNumber}: ${message}`, created: [], restocked: [] }
   }
   for (const { quantity } of payload.toRestock) {
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      return { error: 'Restock quantity must be a positive number', created: [], restocked: [] }
+    if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity <= 0) {
+      return { error: 'Restock quantity must be a positive whole number', created: [], restocked: [] }
     }
   }
 
   const supabase = await createClient()
-
-  let created: Consumable[] = []
-  if (payload.toCreate.length > 0) {
-    const rows = payload.toCreate.map(r => ({
+  const { data, error } = await supabase.rpc('confirm_inventory_import', {
+    p_to_create: payload.toCreate.map(r => ({
       code: r.code,
       name: r.name,
       category: r.category,
       unit: r.unit,
-      qty_in_stock: r.quantity,
+      quantity: r.quantity,
       qty_minimum: r.qty_minimum,
       description: r.description,
-    }))
-    const { data, error } = await supabase.from('consumables').insert(rows).select()
-    if (error) {
-      const dict = await getDictionary(lang)
-      return { error: friendlyDbError(error, dict.inventory.duplicateCode), created: [], restocked: [] }
-    }
-    created = data ?? []
+    })),
+    p_to_restock: payload.toRestock.map(r => ({ consumable_id: r.consumableId, quantity: r.quantity })),
+  })
+
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.inventory.duplicateCode), created: [], restocked: [] }
   }
 
-  const restocked: Consumable[] = []
-  for (const { consumableId, quantity } of payload.toRestock) {
-    const { data, error } = await supabase
-      .rpc('restock_consumable', { p_consumable_id: consumableId, p_quantity: quantity })
-      .single()
-    if (error) {
-      revalidatePath(`/${lang}/inventory`)
-      return {
-        error: `Restocked ${restocked.length} of ${payload.toRestock.length} matched items before this error: ${error.message}`,
-        created,
-        restocked,
-      }
-    }
-    restocked.push(data as Consumable)
-  }
-
+  const result = data as { created: Consumable[]; restocked: Consumable[] }
   revalidatePath(`/${lang}/inventory`)
-  return { created, restocked }
+  return { created: result.created, restocked: result.restocked }
 }

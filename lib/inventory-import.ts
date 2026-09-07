@@ -71,12 +71,20 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
     : (typeof codeRaw === 'number' ? String(codeRaw) : '')
   if (!code) return { error: 'Missing code' }
 
+  // Every quantity column in this app is an integer (see lib/utils.ts's
+  // clampQuantityInput) - a fractional value like "1.5" is finite and
+  // positive, so it would otherwise sail past this check and only fail
+  // later as a raw, untranslated Postgres type-cast error.
   const quantity = Number(mapped.quantity)
-  if (!Number.isFinite(quantity) || quantity <= 0) return { error: 'Quantity must be a positive number' }
+  if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity <= 0) {
+    return { error: 'Quantity must be a positive whole number' }
+  }
 
   const qtyMinRaw = mapped.qty_minimum
   const qty_minimum = qtyMinRaw != null && qtyMinRaw !== '' ? Number(qtyMinRaw) : 0
-  if (!Number.isFinite(qty_minimum) || qty_minimum < 0) return { error: 'Minimum stock must be zero or a positive number' }
+  if (!Number.isFinite(qty_minimum) || !Number.isInteger(qty_minimum) || qty_minimum < 0) {
+    return { error: 'Minimum stock must be a whole number, zero or greater' }
+  }
 
   const category = typeof mapped.category === 'string' && mapped.category.trim()
     ? mapped.category.trim().toLowerCase()

@@ -40,18 +40,25 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
     setError('')
     setPreview(null)
 
-    const formData = new FormData()
-    formData.append('file', file)
-    const result = await parseInventoryExcelAction(formData)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const result = await parseInventoryExcelAction(formData)
 
-    if (result.error) {
-      setError(result.error)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+
+      setPreview(result.data ?? null)
+    } catch {
+      // A thrown network/server error (not a { error } result) used to
+      // leave `parsing` stuck true forever, permanently disabling the
+      // modal's close button - see closeDisabled below.
+      setError('Something went wrong — check your connection and try again')
+    } finally {
       setParsing(false)
-      return
     }
-
-    setPreview(result.data ?? null)
-    setParsing(false)
   }
 
   async function handleConfirm() {
@@ -59,32 +66,28 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
     setConfirming(true)
     setError('')
 
-    const result = await confirmInventoryImportAction(lang, {
-      toCreate: preview.toCreate,
-      toRestock: preview.toRestock.map(r => ({ consumableId: r.consumableId, quantity: r.row.quantity })),
-    })
-
-    if (result.error) {
-      // Some rows may have already gone through before the failure (e.g. the
-      // restock loop errors partway). Drop those from the preview so a retry
-      // only resends what's still pending, instead of re-creating consumables
-      // or double-counting a restock quantity already applied.
-      const createdCodes = new Set(result.created.map(c => c.code))
-      const restockedIds = new Set(result.restocked.map(c => c.id))
-      setPreview(prev => prev && {
-        ...prev,
-        toCreate: prev.toCreate.filter(r => !createdCodes.has(r.code)),
-        toRestock: prev.toRestock.filter(r => !restockedIds.has(r.consumableId)),
+    try {
+      // confirmInventoryImportAction applies the whole batch as a single
+      // transaction now (see confirm_inventory_import) - either every row
+      // succeeds or none do, so there's no partial result to reconcile the
+      // preview against on failure the way there used to be.
+      const result = await confirmInventoryImportAction(lang, {
+        toCreate: preview.toCreate,
+        toRestock: preview.toRestock.map(r => ({ consumableId: r.consumableId, quantity: r.row.quantity })),
       })
-      setError(result.error)
-      setConfirming(false)
-      if (result.created.length || result.restocked.length) onImported(result.created, result.restocked)
-      return
-    }
 
-    onImported(result.created, result.restocked)
-    setConfirming(false)
-    onClose()
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+
+      onImported(result.created, result.restocked)
+      onClose()
+    } catch {
+      setError('Something went wrong — check your connection and try again')
+    } finally {
+      setConfirming(false)
+    }
   }
 
   const busy = parsing || confirming

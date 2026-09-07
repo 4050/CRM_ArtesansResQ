@@ -77,17 +77,30 @@ describe('parseRawRow', () => {
   })
 
   it('rejects a zero or negative quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 0 })).toEqual({ error: 'Quantity must be a positive number' })
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: -3 })).toEqual({ error: 'Quantity must be a positive number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 0 })).toEqual({ error: 'Quantity must be a positive whole number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: -3 })).toEqual({ error: 'Quantity must be a positive whole number' })
   })
 
   it('rejects a non-numeric quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 'lots' })).toEqual({ error: 'Quantity must be a positive number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 'lots' })).toEqual({ error: 'Quantity must be a positive whole number' })
+  })
+
+  // Regression: every quantity column in this app is an integer - a
+  // fractional value used to sail past this check (finite and positive)
+  // and only fail later as a raw, untranslated Postgres type-cast error.
+  it('rejects a fractional quantity', () => {
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 1.5 })).toEqual({ error: 'Quantity must be a positive whole number' })
   })
 
   it('rejects a negative minimum stock', () => {
     expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, min: -1 })).toEqual({
-      error: 'Minimum stock must be zero or a positive number',
+      error: 'Minimum stock must be a whole number, zero or greater',
+    })
+  })
+
+  it('rejects a fractional minimum stock', () => {
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, min: 2.5 })).toEqual({
+      error: 'Minimum stock must be a whole number, zero or greater',
     })
   })
 })

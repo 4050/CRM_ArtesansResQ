@@ -73,7 +73,22 @@ export async function setUserActiveAction(lang: Locale, userId: string, active: 
   if (authError) return { error: authError.message }
 
   const { error: dbError } = await admin.from('users').update({ is_active: active }).eq('id', guard.userId)
-  if (dbError) return { error: dbError.message }
+  if (dbError) {
+    // Auth-level change already applied but the DB flag that's supposed to
+    // mirror it didn't - current_org_id() (see 202608260001) checks
+    // is_active, not the Auth ban, for RLS purposes, so leaving these two
+    // out of sync would silently break the "immediate cutoff" guarantee
+    // this feature exists for. Compensate by undoing the Auth-level change,
+    // so the account ends up back where it started rather than half-applied.
+    const dict = await getDictionary(lang)
+    const { error: compensateError } = await admin.auth.admin.updateUserById(guard.userId, {
+      ban_duration: active ? '876000h' : 'none',
+    })
+    if (compensateError) {
+      return { error: dict.users.activeChangeInconsistent }
+    }
+    return { error: dict.users.activeChangeFailed }
+  }
 
   revalidatePath(`/${lang}/users`)
   return {}

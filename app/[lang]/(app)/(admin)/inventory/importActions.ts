@@ -220,7 +220,7 @@ export async function confirmInventoryImportAction(
 
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.inventory.duplicateCode), created: [], restocked: [] }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.inventory.duplicateCode), created: [], restocked: [] }
   }
 
   const result = data as { created: Consumable[]; restocked: Consumable[] }

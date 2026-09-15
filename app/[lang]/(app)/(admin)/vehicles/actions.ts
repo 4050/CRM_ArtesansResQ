@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
-import { friendlyDbError } from '@/lib/action-errors'
+import { friendlyDbError, type ActionResult } from '@/lib/action-errors'
 import type { Vehicle, Bag } from '@/types'
 
 export interface NewVehicleInput {
@@ -28,14 +28,12 @@ export interface BagFormInput {
   is_active: boolean
 }
 
-type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: string }
-
 export async function createVehicleAction(lang: Locale, input: NewVehicleInput): Promise<ActionResult<Vehicle>> {
   const supabase = await createClient()
   const { data, error } = await supabase.from('vehicles').insert([input]).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.vehicles.duplicateVehicleNumber) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.vehicles.duplicateVehicleNumber) }
   }
   revalidatePath(`/${lang}/vehicles`)
   return { data }
@@ -46,7 +44,7 @@ export async function updateVehicleAction(lang: Locale, id: string, input: Vehic
   const { data, error } = await supabase.from('vehicles').update(input).eq('id', id).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.vehicles.duplicateVehicleNumber) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.vehicles.duplicateVehicleNumber) }
   }
   revalidatePath(`/${lang}/vehicles`)
   return { data }
@@ -55,7 +53,10 @@ export async function updateVehicleAction(lang: Locale, id: string, input: Vehic
 export async function archiveVehicleAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('archive_vehicle', { p_vehicle_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/vehicles`)
   return {}
 }
@@ -63,7 +64,10 @@ export async function archiveVehicleAction(lang: Locale, id: string): Promise<{ 
 export async function deleteVehicleAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('delete_vehicle', { p_vehicle_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/vehicles`)
   return {}
 }
@@ -73,7 +77,7 @@ export async function createBagAction(lang: Locale, input: NewBagInput): Promise
   const { data, error } = await supabase.from('bags').insert([input]).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.vehicles.duplicateBagNumber) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.vehicles.duplicateBagNumber) }
   }
   revalidatePath(`/${lang}/vehicles`)
   return { data }
@@ -84,7 +88,7 @@ export async function updateBagAction(lang: Locale, id: string, input: BagFormIn
   const { data, error } = await supabase.from('bags').update(input).eq('id', id).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.vehicles.duplicateBagNumber) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.vehicles.duplicateBagNumber) }
   }
   revalidatePath(`/${lang}/vehicles`)
   return { data }
@@ -93,7 +97,10 @@ export async function updateBagAction(lang: Locale, id: string, input: BagFormIn
 export async function archiveBagAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('archive_bag', { p_bag_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/vehicles`)
   return {}
 }
@@ -101,7 +108,10 @@ export async function archiveBagAction(lang: Locale, id: string): Promise<{ erro
 export async function deleteBagAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('delete_bag', { p_bag_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/vehicles`)
   return {}
 }

@@ -1,12 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, ShieldOff, ShieldCheck, Trash2, AlertTriangle } from 'lucide-react'
 import { setUserRoleAction, setUserActiveAction, deleteUserAction } from './actions'
 import type { OrgMember } from '@/lib/data/users'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime, isOnline, ONLINE_THRESHOLD_MS } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
+
+function OnlineStatus({ member, lang, dict }: { member: OrgMember; lang: Locale; dict: Dictionary }) {
+  // Re-checked periodically (rather than only at page load) so a member
+  // who stops sending heartbeats shows as offline without the admin
+  // having to reload the page.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), ONLINE_THRESHOLD_MS / 2)
+    return () => clearInterval(id)
+  }, [])
+
+  if (isOnline(member.last_seen_at, now)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-green-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        {dict.users.online}
+      </span>
+    )
+  }
+
+  return (
+    <span className="text-xs text-slate-400">
+      {member.last_seen_at ? `${dict.users.lastSeenPrefix}: ${formatDateTime(member.last_seen_at, lang)}` : dict.users.lastSeenNever}
+    </span>
+  )
+}
 
 interface Props {
   lang: Locale
@@ -91,6 +117,7 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
               <th className="text-left px-5 py-3">{dict.users.name}</th>
               <th className="text-left px-5 py-3">{dict.users.role}</th>
               <th className="text-left px-5 py-3">{dict.users.access}</th>
+              <th className="text-left px-5 py-3">{dict.users.online}</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
@@ -134,6 +161,9 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
                     >
                       {member.is_active ? dict.users.statusActive : dict.users.statusRestricted}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <OnlineStatus member={member} lang={lang} dict={dict} />
                   </td>
                   <td className="px-5 py-3 text-right">
                     {saving ? (
@@ -188,6 +218,7 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
                     {isSelf && <span className="text-xs text-slate-400">{dict.users.thisIsYou}</span>}
                   </div>
                 </div>
+                <OnlineStatus member={member} lang={lang} dict={dict} />
                 <div className="flex items-center gap-2">
                   {isProtected ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">

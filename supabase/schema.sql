@@ -21,6 +21,7 @@ create table public.users (
   brigade text,
   is_active boolean not null default true,
   organization_id uuid not null references public.organizations(id),
+  last_seen_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -871,6 +872,30 @@ $$;
 
 revoke all on function public.set_user_role(uuid, text) from public;
 grant execute on function public.set_user_role(uuid, text) to authenticated;
+
+-- Клиент дёргает это раз в минуту, пока смонтирован защищённый layout
+-- (components/layout/Heartbeat.tsx), и /{lang}/users считает пользователя
+-- online, если last_seen_at не старше порога. security definer, а не
+-- обновление через "Authenticated users can update own profile" - тот
+-- policy своим with-check (role/org не меняются) защищает привилегии на
+-- изменяемой самим пользователем строке, а не то, от чего должен
+-- зависеть этот однострочный пинг.
+create or replace function public.touch_last_seen()
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  update public.users set last_seen_at = now() where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.touch_last_seen() from public;
+grant execute on function public.touch_last_seen() to authenticated;
 
 -- Транзакционные операции с вызовами. Один вызов RPC выполняется PostgreSQL
 -- целиком: при любой ошибке вызов, списания и остатки откатываются вместе.

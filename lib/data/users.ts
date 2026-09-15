@@ -13,6 +13,7 @@ export interface OrgMember {
   name: string
   role: UserRole
   is_active: boolean
+  last_seen_at: string | null
 }
 
 export async function getUserOptions(): Promise<{ id: string; name: string }[]> {
@@ -24,7 +25,7 @@ export async function getUserOptions(): Promise<{ id: string; name: string }[]> 
 
 export async function getOrgMembers(): Promise<OrgMember[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase.from('users').select('id, name, role, is_active').order('name')
+  const { data, error } = await supabase.from('users').select('id, name, role, is_active, last_seen_at').order('name')
   if (error) throw new Error(error.message)
   return data ?? []
 }

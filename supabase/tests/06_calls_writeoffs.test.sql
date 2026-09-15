@@ -296,16 +296,26 @@ select is(
 -- UPDATE policy on calls let a client attach another org's vehicle/bag
 -- without update_call_with_writeoffs's org check. With that policy
 -- dropped, a direct client-side UPDATE must affect zero rows (RLS deny
--- is silent, not an error) - not merely fail to attach the foreign
--- vehicle by some other means.
+-- is silent, not an error) - checked here via the row's vehicle_id
+-- staying put, since a data-modifying WITH has to be the top-level
+-- statement in Postgres and can't be nested inside select is(...)'s
+-- subquery the way a plain SELECT could.
+--
+-- This whole suite connects as the postgres superuser, which - like a
+-- table owner - bypasses row level security entirely regardless of what
+-- any policy says (same caveat 08_restrict_access.test.sql documents).
+-- Switch into the non-superuser "authenticated" role (what PostgREST
+-- actually connects as) to exercise the policy for real, not trivially
+-- pass no matter what it says.
+set local role authenticated;
+update public.calls
+set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
+where description = 'pgtap-marker-diff-1-renamed';
+reset role;
+
 select is(
-  (select count(*)::int from (
-     update public.calls
-     set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
-     where description = 'pgtap-marker-diff-1-renamed'
-     returning 1
-   ) x),
-  0,
+  (select vehicle_id from public.calls where description = 'pgtap-marker-diff-1-renamed'),
+  'dddddddd-0000-0000-0000-000000000001'::uuid,
   'a direct client UPDATE on calls is blocked now that its RLS UPDATE policy is gone'
 );
 

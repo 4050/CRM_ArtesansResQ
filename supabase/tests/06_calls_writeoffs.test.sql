@@ -299,12 +299,13 @@ select is(
 -- is silent, not an error) - not merely fail to attach the foreign
 -- vehicle by some other means.
 select is(
-  (select count(*)::int from (
+  (with updated as (
      update public.calls
      set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
      where description = 'pgtap-marker-diff-1-renamed'
      returning 1
-   ) x),
+   )
+   select count(*)::int from updated),
   0,
   'a direct client UPDATE on calls is blocked now that its RLS UPDATE policy is gone'
 );

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Truck, ShoppingBag, Loader2, Edit2, Trash2, Ban, AlertTriangle } from 'lucide-react'
+import { Plus, Truck, ShoppingBag, Edit2, Trash2, Ban } from 'lucide-react'
 import {
   createVehicleAction,
   updateVehicleAction,
@@ -11,188 +11,73 @@ import {
   updateBagAction,
   archiveBagAction,
   deleteBagAction,
+  type NewVehicleInput,
+  type VehicleFormInput,
+  type NewBagInput,
+  type BagFormInput,
 } from './actions'
 import type { Vehicle, Bag } from '@/types'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { cn } from '@/lib/utils'
-import Modal from '@/components/ui/Modal'
-
-type BagRow = Bag
+import { useArchivableCrud } from '@/lib/hooks/useArchivableCrud'
+import EntityFormModal from '@/components/ui/EntityFormModal'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 
 interface Props {
   lang: Locale
   dict: Dictionary
   vehicles: Vehicle[]
-  bags: BagRow[]
+  bags: Bag[]
   isAdmin: boolean
 }
 
-type ModalMode =
-  | 'add-vehicle' | 'edit-vehicle' | 'deactivate-vehicle' | 'delete-vehicle'
-  | 'add-bag' | 'edit-bag' | 'deactivate-bag' | 'delete-bag'
-  | null
+interface VehicleForm {
+  number: string
+  name: string
+  is_active: boolean
+}
 
-const emptyVehicleForm = { number: '', name: '', is_active: true }
-const emptyBagForm = { number: '', description: '', is_active: true }
+interface BagForm {
+  number: string
+  description: string
+  is_active: boolean
+}
+
+const emptyVehicleForm: VehicleForm = { number: '', name: '', is_active: true }
+const emptyBagForm: BagForm = { number: '', description: '', is_active: true }
 
 export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, bags: initialBags, isAdmin }: Props) {
-  const [vehicles, setVehicles] = useState(initialVehicles)
-  const [bags, setBags] = useState(initialBags)
-  const [modal, setModal] = useState<ModalMode>(null)
-  const [vehicleTarget, setVehicleTarget] = useState<Vehicle | null>(null)
-  const [bagTarget, setBagTarget] = useState<BagRow | null>(null)
-  const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm)
-  const [bagForm, setBagForm] = useState(emptyBagForm)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [showInactiveVehicles, setShowInactiveVehicles] = useState(false)
   const [showInactiveBags, setShowInactiveBags] = useState(false)
 
-  const visibleVehicles = vehicles.filter(v => v.is_active || showInactiveVehicles)
-  const visibleBags = bags.filter(b => b.is_active || showInactiveBags)
+  const vehicleCrud = useArchivableCrud<Vehicle, VehicleForm, NewVehicleInput, VehicleFormInput>(initialVehicles, {
+    actions: {
+      create: input => createVehicleAction(lang, input),
+      update: (id, input) => updateVehicleAction(lang, id, input),
+      archive: id => archiveVehicleAction(lang, id),
+      remove: id => deleteVehicleAction(lang, id),
+    },
+    emptyForm: emptyVehicleForm,
+    toForm: v => ({ number: v.number, name: v.name ?? '', is_active: v.is_active }),
+    toCreateInput: form => ({ number: form.number.trim(), name: form.name.trim() || null }),
+    toUpdateInput: form => ({ number: form.number.trim(), name: form.name.trim() || null, is_active: form.is_active }),
+  })
 
-  function closeModal() {
-    setModal(null)
-    setVehicleTarget(null)
-    setBagTarget(null)
-    setSaveError('')
-  }
+  const bagCrud = useArchivableCrud<Bag, BagForm, NewBagInput, BagFormInput>(initialBags, {
+    actions: {
+      create: input => createBagAction(lang, input),
+      update: (id, input) => updateBagAction(lang, id, input),
+      archive: id => archiveBagAction(lang, id),
+      remove: id => deleteBagAction(lang, id),
+    },
+    emptyForm: emptyBagForm,
+    toForm: b => ({ number: b.number, description: b.description ?? '', is_active: b.is_active }),
+    toCreateInput: form => ({ number: form.number.trim(), description: form.description.trim() || null }),
+    toUpdateInput: form => ({ number: form.number.trim(), description: form.description.trim() || null, is_active: form.is_active }),
+  })
 
-  function openAddVehicle() {
-    setVehicleForm(emptyVehicleForm)
-    setModal('add-vehicle')
-  }
-
-  function openEditVehicle(v: Vehicle) {
-    setVehicleTarget(v)
-    setVehicleForm({ number: v.number, name: v.name ?? '', is_active: v.is_active })
-    setModal('edit-vehicle')
-  }
-
-  function openDeactivateVehicle(v: Vehicle) {
-    setVehicleTarget(v)
-    setModal('deactivate-vehicle')
-  }
-
-  function openDeleteVehicle(v: Vehicle) {
-    setVehicleTarget(v)
-    setModal('delete-vehicle')
-  }
-
-  function openAddBag() {
-    setBagForm(emptyBagForm)
-    setModal('add-bag')
-  }
-
-  function openEditBag(b: BagRow) {
-    setBagTarget(b)
-    setBagForm({ number: b.number, description: b.description ?? '', is_active: b.is_active })
-    setModal('edit-bag')
-  }
-
-  function openDeactivateBag(b: BagRow) {
-    setBagTarget(b)
-    setModal('deactivate-bag')
-  }
-
-  function openDeleteBag(b: BagRow) {
-    setBagTarget(b)
-    setModal('delete-bag')
-  }
-
-  async function handleSaveVehicle() {
-    setSaving(true)
-    setSaveError('')
-
-    const number = vehicleForm.number.trim()
-    const name = vehicleForm.name.trim() || null
-
-    if (modal === 'edit-vehicle' && vehicleTarget) {
-      const { data, error } = await updateVehicleAction(lang, vehicleTarget.id, { number, name, is_active: vehicleForm.is_active })
-      if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setVehicles(prev => prev.map(v => v.id === data.id ? data : v))
-    } else {
-      const { data, error } = await createVehicleAction(lang, { number, name })
-      if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setVehicles(prev => [...prev, data].sort((a, b) => a.number.localeCompare(b.number)))
-    }
-
-    setSaving(false)
-    closeModal()
-  }
-
-  async function handleDeactivateVehicle() {
-    if (!vehicleTarget) return
-    setSaving(true)
-    setSaveError('')
-
-    const { error } = await archiveVehicleAction(lang, vehicleTarget.id)
-    if (error) { setSaveError(error); setSaving(false); return }
-
-    setVehicles(prev => prev.map(v => v.id === vehicleTarget.id ? { ...v, is_active: false } : v))
-    setSaving(false)
-    closeModal()
-  }
-
-  async function handleDeleteVehicle() {
-    if (!vehicleTarget) return
-    setSaving(true)
-    setSaveError('')
-
-    const { error } = await deleteVehicleAction(lang, vehicleTarget.id)
-    if (error) { setSaveError(error); setSaving(false); return }
-
-    setVehicles(prev => prev.filter(v => v.id !== vehicleTarget.id))
-    setSaving(false)
-    closeModal()
-  }
-
-  async function handleSaveBag() {
-    setSaving(true)
-    setSaveError('')
-
-    const number = bagForm.number.trim()
-    const description = bagForm.description.trim() || null
-
-    if (modal === 'edit-bag' && bagTarget) {
-      const { data, error } = await updateBagAction(lang, bagTarget.id, { number, description, is_active: bagForm.is_active })
-      if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setBags(prev => prev.map(b => b.id === data.id ? data : b))
-    } else {
-      const { data, error } = await createBagAction(lang, { number, description })
-      if (error) { setSaveError(error); setSaving(false); return }
-      if (data) setBags(prev => [...prev, data].sort((a, b) => a.number.localeCompare(b.number)))
-    }
-
-    setSaving(false)
-    closeModal()
-  }
-
-  async function handleDeactivateBag() {
-    if (!bagTarget) return
-    setSaving(true)
-    setSaveError('')
-
-    const { error } = await archiveBagAction(lang, bagTarget.id)
-    if (error) { setSaveError(error); setSaving(false); return }
-
-    setBags(prev => prev.map(b => b.id === bagTarget.id ? { ...b, is_active: false } : b))
-    setSaving(false)
-    closeModal()
-  }
-
-  async function handleDeleteBag() {
-    if (!bagTarget) return
-    setSaving(true)
-    setSaveError('')
-
-    const { error } = await deleteBagAction(lang, bagTarget.id)
-    if (error) { setSaveError(error); setSaving(false); return }
-
-    setBags(prev => prev.filter(b => b.id !== bagTarget.id))
-    setSaving(false)
-    closeModal()
-  }
+  const visibleVehicles = vehicleCrud.items.filter(v => v.is_active || showInactiveVehicles)
+  const visibleBags = bagCrud.items.filter(b => b.is_active || showInactiveBags)
 
   return (
     <div className="space-y-6">
@@ -219,7 +104,7 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
             )}
             {isAdmin && (
               <button
-                onClick={openAddVehicle}
+                onClick={vehicleCrud.openAdd}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -245,15 +130,15 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openEditVehicle(v)} title={dict.vehicles.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                    <button onClick={() => vehicleCrud.openEdit(v)} title={dict.vehicles.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     {v.is_active && (
-                      <button onClick={() => openDeactivateVehicle(v)} title={dict.vehicles.deactivate} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                      <button onClick={() => vehicleCrud.openDeactivate(v)} title={dict.vehicles.deactivate} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
                         <Ban className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button onClick={() => openDeleteVehicle(v)} title={dict.vehicles.deleteForever} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button onClick={() => vehicleCrud.openDelete(v)} title={dict.vehicles.deleteForever} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -285,7 +170,7 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
             )}
             {isAdmin && (
               <button
-                onClick={openAddBag}
+                onClick={bagCrud.openAdd}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -312,15 +197,15 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
                 <div className="flex items-center gap-2">
                   {isAdmin && (
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEditBag(b)} title={dict.vehicles.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                      <button onClick={() => bagCrud.openEdit(b)} title={dict.vehicles.edit} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       {b.is_active && (
-                        <button onClick={() => openDeactivateBag(b)} title={dict.vehicles.deactivate} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                        <button onClick={() => bagCrud.openDeactivate(b)} title={dict.vehicles.deactivate} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
                           <Ban className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <button onClick={() => openDeleteBag(b)} title={dict.vehicles.deleteForever} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button onClick={() => bagCrud.openDelete(b)} title={dict.vehicles.deleteForever} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -332,286 +217,134 @@ export default function VehiclesClient({ lang, dict, vehicles: initialVehicles, 
         )}
       </div>
 
-      {/* Add / edit vehicle modal */}
-      {(modal === 'add-vehicle' || modal === 'edit-vehicle') && (
-        <Modal
-          title={modal === 'edit-vehicle' ? dict.vehicles.editVehicle : dict.vehicles.newVehicle}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleSaveVehicle}
-              disabled={saving || !vehicleForm.number.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {modal === 'edit-vehicle' ? dict.vehicles.save : dict.vehicles.add}
-            </button>
-          </>}
-        >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
-            <input
-              value={vehicleForm.number}
-              onChange={e => setVehicleForm(f => ({ ...f, number: e.target.value }))}
-              placeholder={dict.vehicles.numberPlaceholder}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.nameOptional}</label>
-            <input
-              value={vehicleForm.name}
-              onChange={e => setVehicleForm(f => ({ ...f, name: e.target.value }))}
-              placeholder={dict.vehicles.namePlaceholder}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          {modal === 'edit-vehicle' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
-              <select
-                value={vehicleForm.is_active ? 'active' : 'inactive'}
-                onChange={e => setVehicleForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-              >
-                <option value="active">{dict.vehicles.statusActive}</option>
-                <option value="inactive">{dict.vehicles.statusInactive}</option>
-              </select>
-            </div>
-          )}
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+      {/* Add / edit vehicle */}
+      {(vehicleCrud.modal === 'add' || vehicleCrud.modal === 'edit') && (
+        <EntityFormModal
+          title={vehicleCrud.modal === 'edit' ? dict.vehicles.editVehicle : dict.vehicles.newVehicle}
+          primaryLabel={dict.vehicles.number}
+          primaryValue={vehicleCrud.form.number}
+          primaryPlaceholder={dict.vehicles.numberPlaceholder}
+          onPrimaryChange={number => vehicleCrud.setForm(f => ({ ...f, number }))}
+          secondaryLabel={dict.vehicles.nameOptional}
+          secondaryValue={vehicleCrud.form.name}
+          secondaryPlaceholder={dict.vehicles.namePlaceholder}
+          onSecondaryChange={name => vehicleCrud.setForm(f => ({ ...f, name }))}
+          showStatus={vehicleCrud.modal === 'edit'}
+          statusLabel={dict.vehicles.status}
+          statusActive={vehicleCrud.form.is_active}
+          onStatusChange={is_active => vehicleCrud.setForm(f => ({ ...f, is_active }))}
+          statusActiveLabel={dict.vehicles.statusActive}
+          statusInactiveLabel={dict.vehicles.statusInactive}
+          saveLabel={vehicleCrud.modal === 'edit' ? dict.vehicles.save : dict.vehicles.add}
+          cancelLabel={dict.vehicles.cancel}
+          saving={vehicleCrud.saving}
+          canSave={!!vehicleCrud.form.number.trim()}
+          error={vehicleCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={vehicleCrud.close}
+          onSave={vehicleCrud.save}
+        />
       )}
 
       {/* Deactivate vehicle confirmation */}
-      {modal === 'deactivate-vehicle' && vehicleTarget && (
-        <Modal
+      {vehicleCrud.modal === 'deactivate' && vehicleCrud.target && (
+        <ConfirmModal
           title={dict.vehicles.deactivateVehicleTitle}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleDeactivateVehicle}
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-              {dict.vehicles.makeInactive}
-            </button>
-          </>}
-        >
-          <div className="bg-slate-50 rounded-lg px-4 py-3">
-            <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
-          </div>
-          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{dict.vehicles.deactivateVehicleWarning}</span>
-          </div>
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+          itemLabel={`${vehicleCrud.target.number}${vehicleCrud.target.name ? ` — ${vehicleCrud.target.name}` : ''}`}
+          warning={dict.vehicles.deactivateVehicleWarning}
+          tone="amber"
+          icon={Ban}
+          confirmLabel={dict.vehicles.makeInactive}
+          cancelLabel={dict.vehicles.cancel}
+          saving={vehicleCrud.saving}
+          error={vehicleCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={vehicleCrud.close}
+          onConfirm={vehicleCrud.confirmDeactivate}
+        />
       )}
 
       {/* Hard delete vehicle confirmation */}
-      {modal === 'delete-vehicle' && vehicleTarget && (
-        <Modal
+      {vehicleCrud.modal === 'delete' && vehicleCrud.target && (
+        <ConfirmModal
           title={dict.vehicles.deleteVehicleTitle}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleDeleteVehicle}
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              {dict.vehicles.delete}
-            </button>
-          </>}
-        >
-          <div className="bg-slate-50 rounded-lg px-4 py-3">
-            <div className="text-sm font-medium text-slate-900">{vehicleTarget.number}{vehicleTarget.name ? ` — ${vehicleTarget.name}` : ''}</div>
-          </div>
-          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{dict.vehicles.deleteVehicleWarning}</span>
-          </div>
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+          itemLabel={`${vehicleCrud.target.number}${vehicleCrud.target.name ? ` — ${vehicleCrud.target.name}` : ''}`}
+          warning={dict.vehicles.deleteVehicleWarning}
+          tone="red"
+          icon={Trash2}
+          confirmLabel={dict.vehicles.delete}
+          cancelLabel={dict.vehicles.cancel}
+          saving={vehicleCrud.saving}
+          error={vehicleCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={vehicleCrud.close}
+          onConfirm={vehicleCrud.confirmDelete}
+        />
       )}
 
-      {/* Add / edit bag modal */}
-      {(modal === 'add-bag' || modal === 'edit-bag') && (
-        <Modal
-          title={modal === 'edit-bag' ? dict.vehicles.editBag : dict.vehicles.newBag}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleSaveBag}
-              disabled={saving || !bagForm.number.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {modal === 'edit-bag' ? dict.vehicles.save : dict.vehicles.add}
-            </button>
-          </>}
-        >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.number}</label>
-            <input
-              value={bagForm.number}
-              onChange={e => setBagForm(f => ({ ...f, number: e.target.value }))}
-              placeholder={dict.vehicles.bagNumberPlaceholder}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.descriptionOptional}</label>
-            <input
-              value={bagForm.description}
-              onChange={e => setBagForm(f => ({ ...f, description: e.target.value }))}
-              placeholder={dict.vehicles.bagDescriptionPlaceholder}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          {modal === 'edit-bag' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">{dict.vehicles.status}</label>
-              <select
-                value={bagForm.is_active ? 'active' : 'inactive'}
-                onChange={e => setBagForm(f => ({ ...f, is_active: e.target.value === 'active' }))}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-              >
-                <option value="active">{dict.vehicles.statusActive}</option>
-                <option value="inactive">{dict.vehicles.statusInactive}</option>
-              </select>
-            </div>
-          )}
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+      {/* Add / edit bag */}
+      {(bagCrud.modal === 'add' || bagCrud.modal === 'edit') && (
+        <EntityFormModal
+          title={bagCrud.modal === 'edit' ? dict.vehicles.editBag : dict.vehicles.newBag}
+          primaryLabel={dict.vehicles.number}
+          primaryValue={bagCrud.form.number}
+          primaryPlaceholder={dict.vehicles.bagNumberPlaceholder}
+          onPrimaryChange={number => bagCrud.setForm(f => ({ ...f, number }))}
+          secondaryLabel={dict.vehicles.descriptionOptional}
+          secondaryValue={bagCrud.form.description}
+          secondaryPlaceholder={dict.vehicles.bagDescriptionPlaceholder}
+          onSecondaryChange={description => bagCrud.setForm(f => ({ ...f, description }))}
+          showStatus={bagCrud.modal === 'edit'}
+          statusLabel={dict.vehicles.status}
+          statusActive={bagCrud.form.is_active}
+          onStatusChange={is_active => bagCrud.setForm(f => ({ ...f, is_active }))}
+          statusActiveLabel={dict.vehicles.statusActive}
+          statusInactiveLabel={dict.vehicles.statusInactive}
+          saveLabel={bagCrud.modal === 'edit' ? dict.vehicles.save : dict.vehicles.add}
+          cancelLabel={dict.vehicles.cancel}
+          saving={bagCrud.saving}
+          canSave={!!bagCrud.form.number.trim()}
+          error={bagCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={bagCrud.close}
+          onSave={bagCrud.save}
+        />
       )}
 
       {/* Deactivate bag confirmation */}
-      {modal === 'deactivate-bag' && bagTarget && (
-        <Modal
+      {bagCrud.modal === 'deactivate' && bagCrud.target && (
+        <ConfirmModal
           title={dict.vehicles.deactivateBagTitle}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleDeactivateBag}
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-              {dict.vehicles.makeInactive}
-            </button>
-          </>}
-        >
-          <div className="bg-slate-50 rounded-lg px-4 py-3">
-            <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
-          </div>
-          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{dict.vehicles.deactivateBagWarning}</span>
-          </div>
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+          itemLabel={`${bagCrud.target.number}${bagCrud.target.description ? ` — ${bagCrud.target.description}` : ''}`}
+          warning={dict.vehicles.deactivateBagWarning}
+          tone="amber"
+          icon={Ban}
+          confirmLabel={dict.vehicles.makeInactive}
+          cancelLabel={dict.vehicles.cancel}
+          saving={bagCrud.saving}
+          error={bagCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={bagCrud.close}
+          onConfirm={bagCrud.confirmDeactivate}
+        />
       )}
 
       {/* Hard delete bag confirmation */}
-      {modal === 'delete-bag' && bagTarget && (
-        <Modal
+      {bagCrud.modal === 'delete' && bagCrud.target && (
+        <ConfirmModal
           title={dict.vehicles.deleteBagTitle}
-          onClose={closeModal}
-          closeDisabled={saving}
-          footer={<>
-            <button
-              onClick={closeModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.vehicles.cancel}
-            </button>
-            <button
-              onClick={handleDeleteBag}
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              {dict.vehicles.delete}
-            </button>
-          </>}
-        >
-          <div className="bg-slate-50 rounded-lg px-4 py-3">
-            <div className="text-sm font-medium text-slate-900">{bagTarget.number}{bagTarget.description ? ` — ${bagTarget.description}` : ''}</div>
-          </div>
-          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{dict.vehicles.deleteBagWarning}</span>
-          </div>
-          {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {dict.vehicles.error}: {saveError}
-            </div>
-          )}
-        </Modal>
+          itemLabel={`${bagCrud.target.number}${bagCrud.target.description ? ` — ${bagCrud.target.description}` : ''}`}
+          warning={dict.vehicles.deleteBagWarning}
+          tone="red"
+          icon={Trash2}
+          confirmLabel={dict.vehicles.delete}
+          cancelLabel={dict.vehicles.cancel}
+          saving={bagCrud.saving}
+          error={bagCrud.error}
+          errorLabel={dict.vehicles.error}
+          onClose={bagCrud.close}
+          onConfirm={bagCrud.confirmDelete}
+        />
       )}
     </div>
   )

@@ -6,7 +6,8 @@
     "appDescription": "Supply management system for a medical team",
     "defaultUserName": "User",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "migrationsNeeded": "Database is out of date: apply the Supabase migrations."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -245,6 +246,7 @@
     "importNoValidRows": "No valid rows found in the file",
     "importSummary": "{create} new item(s), {restock} item(s) to restock",
     "duplicateCode": "This code is already used by another item",
+    "importForbidden": "Only an administrator can import inventory",
     "importFileTooLarge": "File is too large (max 10 MB)"
   },
   "vehicles": {
@@ -368,8 +370,7 @@
     "errors": {
       "saving": "Error saving the call",
       "updating": "Error updating the call",
-      "deleting": "Error deleting the call",
-      "migrationsNeeded": "Database is out of date: apply the Supabase migrations."
+      "deleting": "Error deleting the call"
     }
   },
   "teamStock": {

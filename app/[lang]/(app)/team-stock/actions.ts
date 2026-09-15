@@ -2,12 +2,16 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import type { Locale } from '@/app/[lang]/dictionaries'
+import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
+import { friendlyDbError } from '@/lib/action-errors'
 
 export async function returnFromTeamStockAction(lang: Locale, consumableId: string, quantity: number): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('return_from_team_stock', { p_consumable_id: consumableId, p_quantity: quantity })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/team-stock`)
   revalidatePath(`/${lang}/inventory`)
   return {}
@@ -16,7 +20,10 @@ export async function returnFromTeamStockAction(lang: Locale, consumableId: stri
 export async function discardFromTeamStockAction(lang: Locale, consumableId: string, quantity: number): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('discard_from_team_stock', { p_consumable_id: consumableId, p_quantity: quantity })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/team-stock`)
   return {}
 }
@@ -28,7 +35,10 @@ export async function discardFromTeamStockAction(lang: Locale, consumableId: str
 export async function deleteTeamStockItemAction(lang: Locale, consumableId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('delete_team_stock_item', { p_consumable_id: consumableId })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/team-stock`)
   return {}
 }

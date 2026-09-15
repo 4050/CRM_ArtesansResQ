@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
-import { friendlyDbError } from '@/lib/action-errors'
+import { friendlyDbError, type ActionResult } from '@/lib/action-errors'
 import type { Consumable, ConsumableUnit } from '@/types'
 
 export interface ConsumableFormInput {
@@ -21,14 +21,12 @@ export interface NewConsumableInput extends ConsumableFormInput {
   qty_in_stock: number
 }
 
-type ActionResult<T> = { data: T; error?: undefined } | { data?: undefined; error: string }
-
 export async function createConsumableAction(lang: Locale, input: NewConsumableInput): Promise<ActionResult<Consumable>> {
   const supabase = await createClient()
   const { data, error } = await supabase.from('consumables').insert([input]).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.inventory.duplicateCode) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.inventory.duplicateCode) }
   }
   revalidatePath(`/${lang}/inventory`)
   return { data }
@@ -39,7 +37,7 @@ export async function updateConsumableAction(lang: Locale, id: string, input: Co
   const { data, error } = await supabase.from('consumables').update(input).eq('id', id).select().single()
   if (error) {
     const dict = await getDictionary(lang)
-    return { error: friendlyDbError(error, dict.inventory.duplicateCode) }
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded, dict.inventory.duplicateCode) }
   }
   revalidatePath(`/${lang}/inventory`)
   return { data }
@@ -50,7 +48,10 @@ export async function restockConsumableAction(lang: Locale, id: string, quantity
   const { data, error } = await supabase
     .rpc('restock_consumable', { p_consumable_id: id, p_quantity: quantity })
     .single()
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/inventory`)
   return { data: data as Consumable }
 }
@@ -58,7 +59,10 @@ export async function restockConsumableAction(lang: Locale, id: string, quantity
 export async function archiveConsumableAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('archive_consumable', { p_consumable_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/inventory`)
   return {}
 }
@@ -66,7 +70,10 @@ export async function archiveConsumableAction(lang: Locale, id: string): Promise
 export async function deleteConsumableAction(lang: Locale, id: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('delete_consumable', { p_consumable_id: id })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/inventory`)
   return {}
 }
@@ -74,7 +81,10 @@ export async function deleteConsumableAction(lang: Locale, id: string): Promise<
 export async function transferToTeamStockAction(lang: Locale, id: string, quantity: number): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('transfer_to_team_stock', { p_consumable_id: id, p_quantity: quantity })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/inventory`)
   revalidatePath(`/${lang}/team-stock`)
   return {}

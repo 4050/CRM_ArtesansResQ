@@ -1,0 +1,17 @@
+-- "Owners or admins update calls" let an owner or admin UPDATE this table
+-- directly via PostgREST, not just through update_call_with_writeoffs
+-- (security definer, so it doesn't need this policy for its own writes -
+-- see 202608190001/202608200001, which dropped the equivalent INSERT/
+-- DELETE policies for the same reason).
+--
+-- update_call_with_writeoffs validates that p_vehicle_id/p_bag_id belong
+-- to the caller's organization (202608240001). This policy's USING/CHECK
+-- clauses only checked organization_id and ownership/role on the calls
+-- row itself - not that a client-supplied vehicle_id/bag_id belongs to
+-- the same org. A direct UPDATE via PostgREST (reachable by anyone with a
+-- valid session token, not just through the UI) could attach another
+-- organization's vehicle or bag to a call, entirely bypassing that check.
+--
+-- Match the RPC-only treatment already given to calls/writeoffs
+-- insert and delete.
+drop policy if exists "Owners or admins update calls" on public.calls;

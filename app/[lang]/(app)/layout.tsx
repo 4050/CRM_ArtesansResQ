@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/data/users'
 import { getDictionary, hasLocale } from '../dictionaries'
 import Sidebar from '@/components/layout/Sidebar'
+import Heartbeat from '@/components/layout/Heartbeat'
 
 export default async function AppLayout({
   children,
@@ -28,6 +29,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex h-full">
+      <Heartbeat />
       <Sidebar
         lang={lang}
         userName={userName}

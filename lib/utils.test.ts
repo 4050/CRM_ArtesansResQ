@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cn, toBCP47, formatDateTime, isLowStock, startOfDayIso, dateInputStartOfDayIso, dateInputEndOfDayIso, clampQuantityInput, clampNonNegativeInt, toLocalDateInputValue, toLocalTimeInputValue } from './utils'
+import { cn, toBCP47, formatDateTime, isLowStock, isOnline, ONLINE_THRESHOLD_MS, startOfDayIso, dateInputStartOfDayIso, dateInputEndOfDayIso, clampQuantityInput, clampNonNegativeInt, toLocalDateInputValue, toLocalTimeInputValue } from './utils'
 import { ORG_TIMEZONE } from './timezone'
 
 describe('cn', () => {
@@ -45,6 +45,24 @@ describe('formatDateTime', () => {
       timeZone: ORG_TIMEZONE,
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     }))
+  })
+})
+
+describe('isOnline', () => {
+  const now = new Date('2026-03-05T12:00:00Z').getTime()
+
+  it('is false when last_seen_at was never set', () => {
+    expect(isOnline(null, now)).toBe(false)
+  })
+
+  it('is true just within the threshold', () => {
+    const lastSeenAt = new Date(now - ONLINE_THRESHOLD_MS).toISOString()
+    expect(isOnline(lastSeenAt, now)).toBe(true)
+  })
+
+  it('is false just past the threshold', () => {
+    const lastSeenAt = new Date(now - ONLINE_THRESHOLD_MS - 1).toISOString()
+    expect(isOnline(lastSeenAt, now)).toBe(false)
   })
 })
 

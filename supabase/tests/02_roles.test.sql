@@ -4,7 +4,7 @@
 --   medic_a        = bbbbbbbb-...-0003 (org A)
 --   admin_b        = bbbbbbbb-...-0004 (org B)
 begin;
-select plan(11);
+select plan(14);
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000001');
 select ok(public.is_admin(), 'master_admin counts as admin');
@@ -56,6 +56,23 @@ select is(
   (select role from public.users where id = 'bbbbbbbb-0000-0000-0000-000000000003'::uuid),
   'admin',
   'role was actually updated'
+);
+
+-- touch_last_seen (202609150002): the heartbeat RPC behind the "who's
+-- online" indicator on /{lang}/users.
+select is(
+  (select last_seen_at from public.users where id = 'bbbbbbbb-0000-0000-0000-000000000002'::uuid),
+  null,
+  'last_seen_at starts out unset'
+);
+select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
+select lives_ok(
+  $$ select public.touch_last_seen() $$,
+  'an authenticated user can call touch_last_seen'
+);
+select ok(
+  (select last_seen_at from public.users where id = 'bbbbbbbb-0000-0000-0000-000000000002'::uuid) > now() - interval '1 minute',
+  'touch_last_seen stamps the caller''s own row with the current time'
 );
 
 select * from finish();

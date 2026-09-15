@@ -300,9 +300,18 @@ select is(
 -- staying put, since a data-modifying WITH has to be the top-level
 -- statement in Postgres and can't be nested inside select is(...)'s
 -- subquery the way a plain SELECT could.
+--
+-- This whole suite connects as the postgres superuser, which - like a
+-- table owner - bypasses row level security entirely regardless of what
+-- any policy says (same caveat 08_restrict_access.test.sql documents).
+-- Switch into the non-superuser "authenticated" role (what PostgREST
+-- actually connects as) to exercise the policy for real, not trivially
+-- pass no matter what it says.
+set local role authenticated;
 update public.calls
 set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
 where description = 'pgtap-marker-diff-1-renamed';
+reset role;
 
 select is(
   (select vehicle_id from public.calls where description = 'pgtap-marker-diff-1-renamed'),

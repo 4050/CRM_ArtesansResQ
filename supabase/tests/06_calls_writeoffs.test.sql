@@ -9,7 +9,7 @@
 -- ('pgtap-marker-call-1') rather than a captured id, so no psql variable
 -- capture (\gset) is needed - keeps this file plain, portable SQL.
 begin;
-select plan(36);
+select plan(37);
 
 -- An org B vehicle, used only to prove update_call_with_writeoffs rejects a
 -- cross-org p_vehicle_id (see create_call_with_writeoffs's equivalent
@@ -290,6 +290,23 @@ select is(
   public.writeoffs_total_since(now() + interval '1 day'),
   0,
   'writeoffs_total_since is 0, not null, when nothing matches'
+);
+
+-- Regression for 202609150001_calls_update_rpc_only.sql: the direct
+-- UPDATE policy on calls let a client attach another org's vehicle/bag
+-- without update_call_with_writeoffs's org check. With that policy
+-- dropped, a direct client-side UPDATE must affect zero rows (RLS deny
+-- is silent, not an error) - not merely fail to attach the foreign
+-- vehicle by some other means.
+select is(
+  (select count(*)::int from (
+     update public.calls
+     set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
+     where description = 'pgtap-marker-diff-1-renamed'
+     returning 1
+   ) x),
+  0,
+  'a direct client UPDATE on calls is blocked now that its RLS UPDATE policy is gone'
 );
 
 select * from finish();

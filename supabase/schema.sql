@@ -233,11 +233,6 @@ create policy "Admins update consumables" on public.consumables
 
 create policy "Authenticated read calls" on public.calls
   for select to authenticated using (organization_id = public.current_org_id());
-create policy "Owners or admins update calls" on public.calls
-  for update to authenticated
-  using (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()))
-  with check (organization_id = public.current_org_id() and (user_id = auth.uid() or public.is_admin()));
-
 create policy "Authenticated read writeoffs" on public.writeoffs
   for select to authenticated using (organization_id = public.current_org_id());
 

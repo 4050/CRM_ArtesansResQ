@@ -1,9 +1,8 @@
 'use server'
 
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getProfile } from '@/lib/data/users'
+import { requireRole } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
 
@@ -19,17 +18,10 @@ async function siteOrigin(): Promise<string> {
 // "caller is admin-or-above, in this organization" check first.
 async function requireAdminOrgId(lang: Locale): Promise<{ organizationId: string } | { error: string }> {
   const dict = await getDictionary(lang)
+  const caller = await requireRole(isAdminRole, dict.invite.forbidden)
+  if ('error' in caller) return caller
 
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-  const profile = userId ? await getProfile(userId) : null
-
-  if (!profile || !isAdminRole(profile.role)) {
-    return { error: dict.invite.forbidden }
-  }
-
-  return { organizationId: profile.organization_id }
+  return { organizationId: caller.organization_id }
 }
 
 // Registration is invite-only: handle_new_user() (see supabase/schema.sql)

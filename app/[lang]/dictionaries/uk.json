@@ -246,6 +246,7 @@
     "importNoValidRows": "У файлі не знайдено жодного коректного рядка",
     "importSummary": "{create} нов. поз., {restock} поз. на поповнення",
     "duplicateCode": "Цей код уже використовується іншою позицією",
+    "importForbidden": "Імпортувати склад може лише адміністратор",
     "importFileTooLarge": "Файл завеликий (макс. 10 МБ)"
   },
   "vehicles": {

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getProfile } from '@/lib/data/users'
+import { requireRole } from '@/lib/auth-guards'
 import { isMasterAdmin } from '@/lib/roles'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
 import { friendlyDbError } from '@/lib/action-errors'
@@ -31,18 +31,13 @@ export async function setUserRoleAction(lang: Locale, userId: string, role: 'adm
 // a nonexistent id) simply comes back empty.
 async function requireMasterAdminTarget(lang: Locale, userId: string): Promise<{ userId: string } | { error: string }> {
   const dict = await getDictionary(lang)
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const callerId = claimsData?.claims.sub
-
-  const profile = callerId ? await getProfile(callerId) : null
-  if (!profile || !isMasterAdmin(profile.role)) {
-    return { error: dict.users.forbidden }
-  }
-  if (userId === callerId) {
+  const caller = await requireRole(isMasterAdmin, dict.users.forbidden)
+  if ('error' in caller) return caller
+  if (userId === caller.id) {
     return { error: dict.users.cannotTargetSelf }
   }
 
+  const supabase = await createClient()
   const { data: target } = await supabase
     .from('users')
     .select('id, role')

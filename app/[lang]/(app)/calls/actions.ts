@@ -14,9 +14,14 @@ export interface CallInput {
   writeoffs: WriteoffInput[]
 }
 
+// Deliberately not lib/action-errors.ts's friendlyDbError: callers here
+// render the returned string directly with no wrapping "Error:" label
+// (unlike every other action file's UI), so the non-migration fallback
+// needs its own operation-specific prefix baked in. Still shares the
+// same migrations-needed text as friendlyDbError's callers.
 function migrationAwareMessage(dict: Dictionary, prefix: string, error: { code?: string; message: string }) {
   return error.code === 'PGRST202'
-    ? dict.calls.errors.migrationsNeeded
+    ? dict.common.migrationsNeeded
     : `${prefix}: ${error.message}`
 }
 

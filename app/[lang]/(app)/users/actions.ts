@@ -6,11 +6,15 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth-guards'
 import { isMasterAdmin } from '@/lib/roles'
 import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
+import { friendlyDbError } from '@/lib/action-errors'
 
 export async function setUserRoleAction(lang: Locale, userId: string, role: 'admin' | 'medic'): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('set_user_role', { p_user_id: userId, p_role: role })
-  if (error) return { error: error.message }
+  if (error) {
+    const dict = await getDictionary(lang)
+    return { error: friendlyDbError(error, dict.common.migrationsNeeded) }
+  }
   revalidatePath(`/${lang}/users`)
   return {}
 }

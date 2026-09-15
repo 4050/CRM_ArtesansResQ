@@ -3,9 +3,9 @@
 import * as XLSX from 'xlsx'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getDictionary, type Locale } from '@/app/[lang]/dictionaries'
+import { getDictionary, type Dictionary, type Locale } from '@/app/[lang]/dictionaries'
 import { friendlyDbError } from '@/lib/action-errors'
-import { getProfile } from '@/lib/data/users'
+import { requireRole } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import type { Consumable, ConsumableUnit } from '@/types'
 import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
@@ -53,15 +53,9 @@ const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 // itself, which Next.js exposes regardless of which page rendered it.
 // confirm_inventory_import's own admin check (see schema.sql) is what
 // actually matters; this just gives a friendlier, earlier error.
-async function requireAdmin(): Promise<{ error: string } | null> {
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-  const profile = userId ? await getProfile(userId) : null
-  if (!isAdminRole(profile?.role)) {
-    return { error: 'Only an administrator can import inventory' }
-  }
-  return null
+async function requireAdmin(dict: Dictionary): Promise<{ error: string } | null> {
+  const caller = await requireRole(isAdminRole, dict.inventory.importForbidden)
+  return 'error' in caller ? caller : null
 }
 
 // Excel files rarely run this large, but without a cap a malformed or
@@ -69,8 +63,9 @@ async function requireAdmin(): Promise<{ error: string } | null> {
 // an unreasonably large single import) - fail fast with a clear reason.
 const MAX_IMPORT_ROWS = 2000
 
-export async function parseInventoryExcelAction(formData: FormData): Promise<{ data?: ImportPreview; error?: string }> {
-  const adminGuard = await requireAdmin()
+export async function parseInventoryExcelAction(lang: Locale, formData: FormData): Promise<{ data?: ImportPreview; error?: string }> {
+  const dict = await getDictionary(lang)
+  const adminGuard = await requireAdmin(dict)
   if (adminGuard) return adminGuard
 
   const file = formData.get('file')
@@ -191,7 +186,8 @@ export async function confirmInventoryImportAction(
   lang: Locale,
   payload: ImportConfirmPayload
 ): Promise<ImportConfirmResult> {
-  const adminGuard = await requireAdmin()
+  const dict = await getDictionary(lang)
+  const adminGuard = await requireAdmin(dict)
   if (adminGuard) return { ...adminGuard, created: [], restocked: [] }
 
   for (const row of payload.toCreate) {
@@ -219,7 +215,6 @@ export async function confirmInventoryImportAction(
   })
 
   if (error) {
-    const dict = await getDictionary(lang)
     return { error: friendlyDbError(error, dict.inventory.duplicateCode), created: [], restocked: [] }
   }
 

@@ -43,7 +43,7 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const result = await parseInventoryExcelAction(formData)
+      const result = await parseInventoryExcelAction(lang, formData)
 
       if (result.error) {
         setError(result.error)

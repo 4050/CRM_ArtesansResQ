@@ -245,6 +245,7 @@
     "importNoValidRows": "No valid rows found in the file",
     "importSummary": "{create} new item(s), {restock} item(s) to restock",
     "duplicateCode": "This code is already used by another item",
+    "importForbidden": "Only an administrator can import inventory",
     "importFileTooLarge": "File is too large (max 10 MB)"
   },
   "vehicles": {

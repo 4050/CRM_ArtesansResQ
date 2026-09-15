@@ -296,17 +296,17 @@ select is(
 -- UPDATE policy on calls let a client attach another org's vehicle/bag
 -- without update_call_with_writeoffs's org check. With that policy
 -- dropped, a direct client-side UPDATE must affect zero rows (RLS deny
--- is silent, not an error) - not merely fail to attach the foreign
--- vehicle by some other means.
+-- is silent, not an error) - checked here via the row's vehicle_id
+-- staying put, since a data-modifying WITH has to be the top-level
+-- statement in Postgres and can't be nested inside select is(...)'s
+-- subquery the way a plain SELECT could.
+update public.calls
+set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
+where description = 'pgtap-marker-diff-1-renamed';
+
 select is(
-  (with updated as (
-     update public.calls
-     set vehicle_id = 'dddddddd-0000-0000-0000-000000000099'
-     where description = 'pgtap-marker-diff-1-renamed'
-     returning 1
-   )
-   select count(*)::int from updated),
-  0,
+  (select vehicle_id from public.calls where description = 'pgtap-marker-diff-1-renamed'),
+  'dddddddd-0000-0000-0000-000000000001'::uuid,
   'a direct client UPDATE on calls is blocked now that its RLS UPDATE policy is gone'
 );
 

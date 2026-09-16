@@ -16,7 +16,8 @@ import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import StockTable from '@/components/stock/StockTable'
 import Modal from '@/components/ui/Modal'
-import { cn, clampNonNegativeInt, clampQuantityInput } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { clampNonNegativeInt, clampQuantityInput } from '@/lib/input-utils'
 import ImportExcelModal from './ImportExcelModal'
 
 interface Props {

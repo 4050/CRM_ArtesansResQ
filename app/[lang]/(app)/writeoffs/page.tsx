@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
-import { formatDateTime, computeTotalPages } from '@/lib/utils'
+import { computeTotalPages } from '@/lib/utils'
+import { formatDateTime } from '@/lib/date-utils'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import { getWriteoffs } from '@/lib/data/writeoffs'
 import { getConsumableNameOptions } from '@/lib/data/consumables'

@@ -1,12 +1,20 @@
 export type UserRole = 'master_admin' | 'admin' | 'medic'
 
+// Mirrors public.users (supabase/schema.sql) - not auth.users, so no
+// `email` here (that lives on the Supabase Auth side; see
+// app/[lang]/(app)/layout.tsx's claims.email for the one place that needs
+// it). Single source of truth for this row's shape - lib/data/users.ts's
+// Profile/OrgMember are Pick<User, ...> of this rather than independently
+// hand-typed subsets that can drift from it (or from each other) as
+// columns get added.
 export interface User {
   id: string
-  email: string
   name: string
   role: UserRole
   brigade: string | null
   organization_id: string
+  is_active: boolean
+  last_seen_at: string | null
   created_at: string
 }
 

@@ -5,7 +5,8 @@ import { Search, X, AlertTriangle } from 'lucide-react'
 import type { Dictionary } from '@/app/[lang]/dictionaries'
 import type { ConsumableOption } from '@/lib/data/consumables'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
-import { cn, clampQuantityInput } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { clampQuantityInput } from '@/lib/input-utils'
 
 function groupByCategory(items: ConsumableOption[]) {
   return items.reduce<Record<string, ConsumableOption[]>>((acc, item) => {

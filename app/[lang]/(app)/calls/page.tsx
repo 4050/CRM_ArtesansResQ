@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
-import { formatDateTime, computeTotalPages } from '@/lib/utils'
+import { computeTotalPages } from '@/lib/utils'
+import { formatDateTime } from '@/lib/date-utils'
 import { getCalls } from '@/lib/data/calls'
 import { getActiveVehicles } from '@/lib/data/vehicles'
 import { getBags } from '@/lib/data/bags'

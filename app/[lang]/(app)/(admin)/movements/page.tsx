@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History } from 'lucide-react'
-import { formatDateTime, computeTotalPages, dateInputStartOfDayIso, dateInputEndOfDayIso } from '@/lib/utils'
-import { ORG_TIMEZONE } from '@/lib/timezone'
+import { computeTotalPages } from '@/lib/utils'
+import { formatDateTime, dateInputStartOfDayIso, dateInputEndOfDayIso, ORG_TIMEZONE } from '@/lib/date-utils'
 import { unitLabel, categoryLabel, sourceLabel, CONSUMABLE_SOURCES } from '@/lib/consumable-labels'
 import { getStockMovements, type Warehouse } from '@/lib/data/movements'
 import { getConsumableNameOptions } from '@/lib/data/consumables'

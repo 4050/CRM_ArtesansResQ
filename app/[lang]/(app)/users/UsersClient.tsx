@@ -5,7 +5,8 @@ import { Loader2, ShieldOff, ShieldCheck, Trash2, AlertTriangle } from 'lucide-r
 import { setUserRoleAction, setUserActiveAction, deleteUserAction } from './actions'
 import type { OrgMember } from '@/lib/data/users'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
-import { cn, formatDateTime, isOnline, ONLINE_THRESHOLD_MS } from '@/lib/utils'
+import { cn, isOnline, ONLINE_THRESHOLD_MS } from '@/lib/utils'
+import { formatDateTime } from '@/lib/date-utils'
 import Modal from '@/components/ui/Modal'
 
 function OnlineStatus({ member, lang, dict }: { member: OrgMember; lang: Locale; dict: Dictionary }) {

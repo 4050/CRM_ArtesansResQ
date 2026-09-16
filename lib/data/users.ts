@@ -1,20 +1,10 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { UserRole } from '@/types'
+import type { User } from '@/types'
 
-export interface Profile {
-  name: string
-  role: UserRole
-  organization_id: string
-}
+export type Profile = Pick<User, 'name' | 'role' | 'organization_id'>
 
-export interface OrgMember {
-  id: string
-  name: string
-  role: UserRole
-  is_active: boolean
-  last_seen_at: string | null
-}
+export type OrgMember = Pick<User, 'id' | 'name' | 'role' | 'is_active' | 'last_seen_at'>
 
 export async function getUserOptions(): Promise<{ id: string; name: string }[]> {
   const supabase = await createClient()

@@ -35,6 +35,99 @@ function OnlineStatus({ member, lang, dict }: { member: OrgMember; lang: Locale;
   )
 }
 
+// Shared by the desktop table and mobile card rendering of a member's row
+// below - a role badge (protected members) or an editable <select>
+// (everyone else). selectClassName is a caller prop, not baked in here,
+// since the table cell and the mobile flex row size the control
+// differently (the mobile row also needs it to grow via flex-1).
+function MemberRoleControl({
+  member,
+  isProtected,
+  saving,
+  dict,
+  onChange,
+  selectClassName,
+}: {
+  member: OrgMember
+  isProtected: boolean
+  saving: boolean
+  dict: Dictionary
+  onChange: (role: 'admin' | 'medic') => void
+  selectClassName: string
+}) {
+  if (isProtected) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+        {dict.users.roleLabels[member.role]}
+      </span>
+    )
+  }
+
+  return (
+    <select
+      value={member.role}
+      onChange={e => onChange(e.target.value as 'admin' | 'medic')}
+      disabled={saving}
+      className={selectClassName}
+    >
+      <option value="admin">{dict.users.roleLabels.admin}</option>
+      <option value="medic">{dict.users.roleLabels.medic}</option>
+    </select>
+  )
+}
+
+// Shared active/restricted badge - identical in both layouts.
+function MemberStatusBadge({ member, dict }: { member: OrgMember; dict: Dictionary }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+        member.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
+      )}
+    >
+      {member.is_active ? dict.users.statusActive : dict.users.statusRestricted}
+    </span>
+  )
+}
+
+// The deactivate/restore + delete button pair - identical in both
+// layouts. The surrounding saving-spinner/isProtected branching stays at
+// each call site instead of in here, since the desktop and mobile
+// spinners need slightly different classes (the table cell's needs
+// inline-block; the mobile flex row's doesn't).
+function MemberActionButtons({
+  member,
+  dict,
+  onToggleActive,
+  onDelete,
+}: {
+  member: OrgMember
+  dict: Dictionary
+  onToggleActive: () => void
+  onDelete: () => void
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggleActive}
+        title={member.is_active ? dict.users.restrict : dict.users.restore}
+        className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors"
+      >
+        {member.is_active ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        title={dict.users.deleteUser}
+        className="p-1.5 text-slate-400 hover:text-red-600 rounded transition-colors"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </>
+  )
+}
+
 interface Props {
   lang: Locale
   dict: Dictionary
@@ -98,6 +191,20 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
     setDeleteTarget(null)
   }
 
+  // Computed once per member, then read by both the desktop table and
+  // mobile card renderers below - previously recomputed identically in
+  // two separate .map() passes over the same list.
+  const rows = members.map(member => {
+    const isSelf = member.id === currentUserId
+    const isMasterAdmin = member.role === 'master_admin'
+    return {
+      member,
+      isSelf,
+      isProtected: isSelf || isMasterAdmin,
+      saving: savingId === member.id,
+    }
+  })
+
   return (
     <div className="space-y-6">
       <div>
@@ -123,145 +230,81 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {members.map(member => {
-              const isSelf = member.id === currentUserId
-              const isMasterAdmin = member.role === 'master_admin'
-              const isProtected = isSelf || isMasterAdmin
-              const saving = savingId === member.id
-              return (
-                <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3 text-sm font-medium text-slate-900">
-                    {member.name}
-                    {isSelf && <span className="ml-2 text-xs font-normal text-slate-400">{dict.users.thisIsYou}</span>}
-                  </td>
-                  <td className="px-5 py-3">
-                    {isProtected ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                        {dict.users.roleLabels[member.role]}
-                      </span>
-                    ) : (
-                      <select
-                        value={member.role}
-                        onChange={e => handleRoleChange(member.id, e.target.value as 'admin' | 'medic')}
-                        disabled={saving}
-                        className={cn(
-                          'px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white disabled:opacity-50',
-                        )}
-                      >
-                        <option value="admin">{dict.users.roleLabels.admin}</option>
-                        <option value="medic">{dict.users.roleLabels.medic}</option>
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                        member.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-                      )}
-                    >
-                      {member.is_active ? dict.users.statusActive : dict.users.statusRestricted}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <OnlineStatus member={member} lang={lang} dict={dict} />
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-400 inline-block" />
-                    ) : !isProtected && (
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(member.id, !member.is_active)}
-                          title={member.is_active ? dict.users.restrict : dict.users.restore}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors"
-                        >
-                          {member.is_active ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(member)}
-                          title={dict.users.deleteUser}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+            {rows.map(({ member, isSelf, isProtected, saving }) => (
+              <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-5 py-3 text-sm font-medium text-slate-900">
+                  {member.name}
+                  {isSelf && <span className="ml-2 text-xs font-normal text-slate-400">{dict.users.thisIsYou}</span>}
+                </td>
+                <td className="px-5 py-3">
+                  <MemberRoleControl
+                    member={member}
+                    isProtected={isProtected}
+                    saving={saving}
+                    dict={dict}
+                    onChange={role => handleRoleChange(member.id, role)}
+                    selectClassName="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white disabled:opacity-50"
+                  />
+                </td>
+                <td className="px-5 py-3">
+                  <MemberStatusBadge member={member} dict={dict} />
+                </td>
+                <td className="px-5 py-3">
+                  <OnlineStatus member={member} lang={lang} dict={dict} />
+                </td>
+                <td className="px-5 py-3 text-right">
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-400 inline-block" />
+                  ) : !isProtected && (
+                    <div className="flex items-center justify-end gap-2">
+                      <MemberActionButtons
+                        member={member}
+                        dict={dict}
+                        onToggleActive={() => handleToggleActive(member.id, !member.is_active)}
+                        onDelete={() => setDeleteTarget(member)}
+                      />
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-slate-100">
-          {members.map(member => {
-            const isSelf = member.id === currentUserId
-            const isMasterAdmin = member.role === 'master_admin'
-            const isProtected = isSelf || isMasterAdmin
-            const saving = savingId === member.id
-            return (
-              <div key={member.id} className="px-4 py-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-900">{member.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                        member.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-                      )}
-                    >
-                      {member.is_active ? dict.users.statusActive : dict.users.statusRestricted}
-                    </span>
-                    {isSelf && <span className="text-xs text-slate-400">{dict.users.thisIsYou}</span>}
-                  </div>
-                </div>
-                <OnlineStatus member={member} lang={lang} dict={dict} />
+          {rows.map(({ member, isSelf, isProtected, saving }) => (
+            <div key={member.id} className="px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-900">{member.name}</span>
                 <div className="flex items-center gap-2">
-                  {isProtected ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                      {dict.users.roleLabels[member.role]}
-                    </span>
-                  ) : (
-                    <select
-                      value={member.role}
-                      onChange={e => handleRoleChange(member.id, e.target.value as 'admin' | 'medic')}
-                      disabled={saving}
-                      className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white disabled:opacity-50"
-                    >
-                      <option value="admin">{dict.users.roleLabels.admin}</option>
-                      <option value="medic">{dict.users.roleLabels.medic}</option>
-                    </select>
-                  )}
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                  ) : !isProtected && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(member.id, !member.is_active)}
-                        title={member.is_active ? dict.users.restrict : dict.users.restore}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded transition-colors"
-                      >
-                        {member.is_active ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(member)}
-                        title={dict.users.deleteUser}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
+                  <MemberStatusBadge member={member} dict={dict} />
+                  {isSelf && <span className="text-xs text-slate-400">{dict.users.thisIsYou}</span>}
                 </div>
               </div>
-            )
-          })}
+              <OnlineStatus member={member} lang={lang} dict={dict} />
+              <div className="flex items-center gap-2">
+                <MemberRoleControl
+                  member={member}
+                  isProtected={isProtected}
+                  saving={saving}
+                  dict={dict}
+                  onChange={role => handleRoleChange(member.id, role)}
+                  selectClassName="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white disabled:opacity-50"
+                />
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                ) : !isProtected && (
+                  <MemberActionButtons
+                    member={member}
+                    dict={dict}
+                    onToggleActive={() => handleToggleActive(member.id, !member.is_active)}
+                    onDelete={() => setDeleteTarget(member)}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

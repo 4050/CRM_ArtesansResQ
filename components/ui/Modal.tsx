@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface Props {
   title: string
@@ -14,9 +15,6 @@ interface Props {
   children: ReactNode
   footer: ReactNode
 }
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 // Full class names spelled out as literal strings (not built with template
 // interpolation) so Tailwind's build-time source scanner - which just looks
@@ -33,60 +31,10 @@ export default function Modal({ title, onClose, closeDisabled, maxWidth = 'max-w
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // onClose/closeDisabled are read through refs, not effect deps - every
-  // keystroke in a form field re-renders the parent with a new `onClose`
-  // function identity, and putting that in the deps array reran this
-  // effect on every keystroke, stealing focus back to the dialog's first
-  // focusable element (the X button) mid-typing. Refs are updated in their
-  // own effect (not directly during render, which React disallows) so
-  // they're always current by the time a keydown handler reads them.
-  const onCloseRef = useRef(onClose)
-  const closeDisabledRef = useRef(closeDisabled)
-  useEffect(() => {
-    onCloseRef.current = onClose
-    closeDisabledRef.current = closeDisabled
-  })
-
   // Every CRUD/confirmation flow in the app goes through this component, so
-  // it needs to behave like a real dialog for keyboard/screen-reader users:
-  // focus moves in on open and back out on close, Escape closes it (unless
-  // an action is in flight, matching the X button's own disabled state),
-  // and Tab can't escape to the page behind the overlay. Runs once per
-  // mount/unmount (i.e. once per open/close), not on every re-render.
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    dialog.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (!closeDisabledRef.current) onCloseRef.current()
-        return
-      }
-      if (e.key !== 'Tab' || !dialog) return
-
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      previouslyFocused?.focus()
-    }
-  }, [])
+  // it needs to behave like a real dialog for keyboard/screen-reader users -
+  // see lib/hooks/useFocusTrap.ts.
+  useFocusTrap(dialogRef, { onClose, closeDisabled })
 
   return (
     // Below `sm`, this anchors to the bottom edge full-bleed (a "bottom

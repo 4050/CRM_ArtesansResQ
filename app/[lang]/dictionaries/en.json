@@ -242,6 +242,7 @@
     "importErrors": "Rows with problems",
     "importRow": "Row",
     "importCurrentQty": "Current",
+    "importAddQty": "Add",
     "importConfirm": "Confirm import",
     "importNoValidRows": "No valid rows found in the file",
     "importSummary": "{create} new item(s), {restock} item(s) to restock",

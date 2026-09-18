@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Loader2, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
-import { unitLabel, categoryLabel, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
-import { clampQuantityInput } from '@/lib/input-utils'
+import { cn } from '@/lib/utils'
+import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } from '@/lib/consumable-labels'
+import { clampQuantityInput, clampNonNegativeInt } from '@/lib/input-utils'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { Consumable } from '@/types'
 import { parseInventoryExcelAction, confirmInventoryImportAction, type ImportPreview, type ImportRow } from './importActions'
@@ -165,6 +166,7 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
                       <th className="text-left px-3 py-2">{dict.inventory.code}</th>
                       <th className="text-left px-3 py-2">{dict.inventory.name}</th>
                       <th className="text-left px-3 py-2">{dict.inventory.category}</th>
+                      <th className="text-left px-3 py-2">{dict.inventory.unit}</th>
                       <th className="text-right px-3 py-2">{dict.inventory.openingStock}</th>
                     </tr>
                   </thead>
@@ -200,18 +202,31 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
                             {CONSUMABLE_CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
                           </select>
                         </td>
+                        <td className="px-1 py-1">
+                          <select
+                            value={row.unit}
+                            onChange={e => updateCreateRow(row.rowNumber, { unit: e.target.value as ImportRow['unit'] })}
+                            disabled={busy}
+                            className={cn(
+                              'px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent',
+                              row.unit ? 'text-slate-500 border-transparent hover:border-slate-200 focus:border-red-400' : 'text-amber-700 border-amber-300',
+                            )}
+                          >
+                            <option value="">{dict.inventory.importSelectUnit}</option>
+                            {CONSUMABLE_UNITS.map(u => <option key={u} value={u}>{unitLabel(dict, u)}</option>)}
+                          </select>
+                        </td>
                         <td className="px-1 py-1 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <span className="text-green-600 font-semibold">+</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               value={row.quantity}
-                              onChange={e => updateCreateRow(row.rowNumber, { quantity: clampQuantityInput(e.target.value) })}
+                              onChange={e => updateCreateRow(row.rowNumber, { quantity: clampNonNegativeInt(e.target.value) })}
                               disabled={busy}
                               className="w-16 px-2 py-1 text-sm text-right font-semibold text-green-600 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
                             />
-                            <span className="text-slate-400 text-xs shrink-0">{unitLabel(dict, row.unit)}</span>
                           </div>
                         </td>
                       </tr>

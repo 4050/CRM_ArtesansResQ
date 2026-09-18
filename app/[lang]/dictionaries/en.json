@@ -245,6 +245,7 @@
     "importRow": "Row",
     "importCurrentQty": "Current",
     "importAddQty": "Add",
+    "importSelectUnit": "Select unit…",
     "importConfirm": "Confirm import",
     "importNoValidRows": "No valid rows found in the file",
     "importSummary": "{create} new item(s), {restock} item(s) to restock",

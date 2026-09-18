@@ -9,14 +9,16 @@ import { requireRole } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import type { Consumable, ConsumableUnit } from '@/types'
 import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
-import { parseRawRow } from '@/lib/inventory-import'
+import { parseRawRow, dedupeCode } from '@/lib/inventory-import'
 
 export interface ImportRow {
   rowNumber: number
   code: string
   name: string
   category: string
-  unit: ConsumableUnit
+  // '' means the sheet's unit didn't match a known code - left for the
+  // admin to pick in the editable preview rather than rejecting the row.
+  unit: ConsumableUnit | ''
   quantity: number
   qty_minimum: number
   description: string | null
@@ -104,6 +106,8 @@ export async function parseInventoryExcelAction(lang: Locale, formData: FormData
   const errors: ImportRowError[] = []
   const seenNewCodes = new Set<string>()
 
+  const isCodeTaken = (code: string) => seenNewCodes.has(code.toLowerCase()) || byCode.has(code.toLowerCase())
+
   rawRows.forEach((raw, idx) => {
     const rowNumber = idx + 2 // +1 for 1-indexing, +1 for the header row
     const result = parseRawRow(raw)
@@ -111,9 +115,9 @@ export async function parseInventoryExcelAction(lang: Locale, formData: FormData
       errors.push({ rowNumber, message: result.error })
       return
     }
-    const { code, name, category, unit, quantity, qty_minimum, description } = result.row
+    const { code: parsedCode, name, category, unit, quantity, qty_minimum, description } = result.row
 
-    const existingMatch = byCode.get(code.toLowerCase())
+    const existingMatch = parsedCode ? byCode.get(parsedCode.toLowerCase()) : undefined
 
     if (existingMatch) {
       // Matched by code: this row restocks the existing item. Its
@@ -121,7 +125,7 @@ export async function parseInventoryExcelAction(lang: Locale, formData: FormData
       // so a mismatch against the existing item's values is intentionally
       // ignored here rather than silently overwriting curated data.
       toRestock.push({
-        row: { rowNumber, code, name, category, unit: (unit as ConsumableUnit) || 'pcs', quantity, qty_minimum, description },
+        row: { rowNumber, code: parsedCode, name, category, unit: (unit as ConsumableUnit) || 'pcs', quantity, qty_minimum, description },
         consumableId: existingMatch.id,
         existingName: existingMatch.name,
         currentQty: existingMatch.qty_in_stock,
@@ -129,19 +133,18 @@ export async function parseInventoryExcelAction(lang: Locale, formData: FormData
       return
     }
 
-    if (!CONSUMABLE_UNITS.includes(unit as ConsumableUnit)) {
-      errors.push({ rowNumber, message: `Unknown unit "${unit}" — expected one of ${CONSUMABLE_UNITS.join(', ')}` })
-      return
-    }
+    // A blank code ("Missing code" used to drop the row) gets a
+    // placeholder the admin can rename instead.
+    const code = dedupeCode(parsedCode || `AUTO-${rowNumber}`, isCodeTaken)
+    seenNewCodes.add(code.toLowerCase())
 
-    const codeKey = code.toLowerCase()
-    if (seenNewCodes.has(codeKey)) {
-      errors.push({ rowNumber, message: `Duplicate code "${code}" also appears in another new row in this file` })
-      return
-    }
-    seenNewCodes.add(codeKey)
+    // An unrecognized unit ("Unknown unit" used to drop the row too) is
+    // left blank instead - ImportExcelModal.tsx's editable preview lets
+    // the admin pick the right one rather than losing the whole row over
+    // one bad cell.
+    const finalUnit: ConsumableUnit | '' = CONSUMABLE_UNITS.some(u => u === unit) ? (unit as ConsumableUnit) : ''
 
-    toCreate.push({ rowNumber, code, name, category, unit: unit as ConsumableUnit, quantity, qty_minimum, description })
+    toCreate.push({ rowNumber, code, name, category, unit: finalUnit, quantity, qty_minimum, description })
   })
 
   return { data: { toCreate, toRestock, errors } }
@@ -165,9 +168,9 @@ export interface ImportConfirmResult {
 function validateCreateRow(row: ImportRow): string | null {
   if (!row.code.trim()) return 'Missing code'
   if (!row.name.trim()) return 'Missing name'
-  if (!CONSUMABLE_UNITS.includes(row.unit)) return `Invalid unit "${row.unit}"`
-  if (!Number.isFinite(row.quantity) || !Number.isInteger(row.quantity) || row.quantity <= 0) {
-    return 'Quantity must be a positive whole number'
+  if (!CONSUMABLE_UNITS.some(u => u === row.unit)) return `Invalid unit "${row.unit}"`
+  if (!Number.isFinite(row.quantity) || !Number.isInteger(row.quantity) || row.quantity < 0) {
+    return 'Quantity must be a whole number, zero or greater'
   }
   if (!Number.isFinite(row.qty_minimum) || !Number.isInteger(row.qty_minimum) || row.qty_minimum < 0) {
     return 'Minimum stock must be a whole number, zero or greater'

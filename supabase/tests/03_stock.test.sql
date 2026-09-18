@@ -2,7 +2,7 @@
 --   admin_a = bbbbbbbb-...-0002 (org A)
 --   medic_a = bbbbbbbb-...-0003 (org A)
 begin;
-select plan(23);
+select plan(26);
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000002');
 
@@ -134,6 +134,34 @@ select is(
   (select qty_in_stock from public.consumables where id = 'cccccccc-0000-0000-0000-000000000006'::uuid),
   15,
   'the restocked item increased by the imported quantity (10 + 5)'
+);
+
+-- Regression for 202609180001_allow_zero_opening_stock_import.sql: a real
+-- donated-supply sheet tracked some items at zero current stock - that
+-- must import cleanly, not be treated as an invalid quantity.
+select lives_ok(
+  $$ select public.confirm_inventory_import(
+       jsonb_build_array(
+         jsonb_build_object('code', 'TST-014', 'name', 'Imported Item Zero Stock', 'category', 'other', 'unit', 'pcs', 'quantity', 0, 'qty_minimum', 0, 'description', null)
+       ),
+       '[]'::jsonb
+     ) $$,
+  'a new item with zero opening stock imports successfully'
+);
+select is(
+  (select qty_in_stock from public.consumables where code = 'TST-014'),
+  0,
+  'the zero-stock item was created with qty_in_stock = 0'
+);
+select throws_like(
+  $$ select public.confirm_inventory_import(
+       jsonb_build_array(
+         jsonb_build_object('code', 'TST-015', 'name', 'Imported Item Negative Stock', 'category', 'other', 'unit', 'pcs', 'quantity', -1, 'qty_minimum', 0, 'description', null)
+       ),
+       '[]'::jsonb
+     ) $$,
+  'Quantity must be zero or a positive number',
+  'a negative quantity is still rejected, unlike zero'
 );
 
 -- Atomicity: a batch where one row is bad rolls back the whole batch,

@@ -19,13 +19,17 @@ export type ParseRowResult = { row: ParsedRow } | { error: string }
 
 // Column headers are matched loosely (case/spacing-insensitive) against
 // these aliases rather than requiring an exact template, since real-world
-// spreadsheets rarely use one canonical header set.
+// spreadsheets rarely use one canonical header set. 'openingstock' and the
+// Ukrainian 'одиницявиміру' are here because a real donated-supply sheet
+// used them (a bilingual "Opening Stock/ Початковий запас" header for
+// quantity, and a Ukrainian-only "Одиниця виміру" header for unit, with no
+// English column at all) - not a speculative addition.
 const FIELD_ALIASES: Record<string, string[]> = {
   code: ['code', 'sku'],
   name: ['name', 'item', 'title', 'itemname'],
   category: ['category', 'cat'],
-  unit: ['unit', 'units', 'uom'],
-  quantity: ['quantity', 'qty', 'amount', 'count'],
+  unit: ['unit', 'units', 'uom', 'одиницявиміру'],
+  quantity: ['quantity', 'qty', 'amount', 'count', 'openingstock'],
   qty_minimum: ['min', 'minimum', 'minqty', 'minquantity', 'minstock', 'minimumstock'],
   description: ['description', 'notes', 'desc'],
 }
@@ -44,10 +48,26 @@ function buildFieldLookup(): Record<string, string> {
 
 const FIELD_LOOKUP = buildFieldLookup()
 
+// A header like "Opening Stock/      Початковий запас" pairs an English
+// and a Ukrainian label for the same column in one cell, rather than using
+// two separate columns the way "Name"/"Найменування Ukrainian" do
+// elsewhere in the same real-world sheet this was found from. Splitting on
+// "/" and matching each side separately lets the English half resolve
+// normally without needing a Ukrainian alias for every field, just the
+// (rarer) fields that only ever show up Ukrainian-only with no English
+// column at all.
+function fieldForHeader(header: string): string | undefined {
+  for (const part of header.split('/')) {
+    const field = FIELD_LOOKUP[normalizeHeader(part)]
+    if (field) return field
+  }
+  return undefined
+}
+
 export function remapRow(raw: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(raw)) {
-    const field = FIELD_LOOKUP[normalizeHeader(key)]
+    const field = fieldForHeader(key)
     if (!field) continue
     // sheet_to_json unions every header used anywhere in the sheet onto
     // every row, so a row missing one of two same-field aliases (e.g. both

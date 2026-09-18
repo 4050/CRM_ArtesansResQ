@@ -35,6 +35,22 @@ describe('remapRow', () => {
     const raw = { Name: null, Quantity: 5 }
     expect(remapRow(raw)).toEqual({ name: null, quantity: 5 })
   })
+
+  // Regression: a real donated-supply sheet paired an English and
+  // Ukrainian label for the same column in one cell ("Opening Stock/
+  // Початковий запас") rather than using a separate column per language -
+  // normalizeHeader alone left the whole string (with its slash) unmapped,
+  // so every row's quantity read as NaN and failed to import at all.
+  it('maps a bilingual "English/Ukrainian" header by its English half', () => {
+    const raw = { 'Opening Stock/      Початковий запас': 10 }
+    expect(remapRow(raw)).toEqual({ quantity: 10 })
+  })
+
+  // Same real sheet's unit column had no English header at all.
+  it('maps a Ukrainian-only header with no English column present', () => {
+    const raw = { 'Одиниця виміру': 'шт.' }
+    expect(remapRow(raw)).toEqual({ unit: 'шт.' })
+  })
 })
 
 describe('parseRawRow', () => {

@@ -115,7 +115,7 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
       title={dict.inventory.importTitle}
       onClose={onClose}
       closeDisabled={busy}
-      maxWidth="max-w-2xl"
+      maxWidth="max-w-4xl"
       footer={<>
         <button
           onClick={onClose}

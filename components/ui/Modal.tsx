@@ -11,7 +11,7 @@ interface Props {
   // Disable the X button while a destructive action is in flight — only the
   // confirmation dialogs (delete/deactivate) do this; forms don't bother.
   closeDisabled?: boolean
-  maxWidth?: 'max-w-sm' | 'max-w-md' | 'max-w-2xl'
+  maxWidth?: 'max-w-sm' | 'max-w-md' | 'max-w-2xl' | 'max-w-4xl'
   children: ReactNode
   footer: ReactNode
 }
@@ -25,6 +25,7 @@ const SM_MAX_WIDTH: Record<NonNullable<Props['maxWidth']>, string> = {
   'max-w-sm': 'sm:max-w-sm',
   'max-w-md': 'sm:max-w-md',
   'max-w-2xl': 'sm:max-w-2xl',
+  'max-w-4xl': 'sm:max-w-4xl',
 }
 
 export default function Modal({ title, onClose, closeDisabled, maxWidth = 'max-w-sm', children, footer }: Props) {

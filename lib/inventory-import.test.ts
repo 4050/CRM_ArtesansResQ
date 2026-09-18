@@ -119,4 +119,20 @@ describe('parseRawRow', () => {
       error: 'Minimum stock must be a whole number, zero or greater',
     })
   })
+
+  // Regression: the same real donated-supply sheet that motivated the
+  // bilingual-header fix above labeled units in Ukrainian ("шт.", "амп",
+  // "флак.", "упак.") rather than this app's canonical unit codes.
+  it('translates a Ukrainian unit abbreviation to its canonical code', () => {
+    const cases: [string, string][] = [['шт.', 'pcs'], ['амп', 'amp'], ['флак.', 'vial'], ['упак.', 'pack']]
+    for (const [unit, expected] of cases) {
+      const result = parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, unit })
+      expect('row' in result && result.row.unit).toBe(expected)
+    }
+  })
+
+  it('leaves an unrecognized unit as lowercased free text, same as category', () => {
+    const result = parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, unit: 'Tab.' })
+    expect('row' in result && result.row.unit).toBe('tab.')
+  })
 })

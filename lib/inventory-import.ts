@@ -79,6 +79,29 @@ export function remapRow(raw: Record<string, unknown>): Record<string, unknown> 
   return out
 }
 
+// Real donated-supply sheets from Ukrainian-speaking teams label the unit
+// column in Ukrainian, not this app's canonical CONSUMABLE_UNITS codes
+// (lib/consumable-labels.ts) - map the abbreviations one such sheet
+// actually used to their canonical code. Both the bare and dot-suffixed
+// spelling of each are listed since real sheets use either inconsistently
+// (compare "амп" in one row of the sheet this was found from against
+// "амп." in the next). Anything not listed here is left as-is
+// (lowercased) rather than guessed at - same as category's free-text
+// fallback - so it still fails the "unknown unit" check for a genuinely
+// new item later instead of being silently misfiled as something it
+// isn't.
+const UA_UNIT_ALIASES: Record<string, string> = {
+  'шт': 'pcs', 'шт.': 'pcs',
+  'пар': 'pair', 'пар.': 'pair', 'пара': 'pair',
+  'мл': 'ml', 'мл.': 'ml',
+  'л': 'l', 'л.': 'l',
+  'г': 'g', 'г.': 'g',
+  'кг': 'kg', 'кг.': 'kg',
+  'уп': 'pack', 'уп.': 'pack', 'упак': 'pack', 'упак.': 'pack',
+  'фл': 'vial', 'фл.': 'vial', 'флак': 'vial', 'флак.': 'vial',
+  'амп': 'amp', 'амп.': 'amp',
+}
+
 export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
   const mapped = remapRow(raw)
 
@@ -110,7 +133,8 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
     ? mapped.category.trim().toLowerCase()
     : 'other'
 
-  const unit = typeof mapped.unit === 'string' ? mapped.unit.trim().toLowerCase() : ''
+  const unitRaw = typeof mapped.unit === 'string' ? mapped.unit.trim().toLowerCase() : ''
+  const unit = UA_UNIT_ALIASES[unitRaw] ?? unitRaw
 
   const description = typeof mapped.description === 'string' && mapped.description.trim()
     ? mapped.description.trim()

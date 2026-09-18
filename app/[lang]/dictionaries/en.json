@@ -71,7 +71,9 @@
       "kg": "kg",
       "pack": "pack",
       "vial": "vial",
-      "amp": "amp"
+      "amp": "amp",
+      "tab": "tab",
+      "blister": "blister"
     },
     "categories": {
       "ppe": "PPE",

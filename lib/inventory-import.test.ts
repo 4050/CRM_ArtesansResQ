@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeHeader, remapRow, parseRawRow } from './inventory-import'
+import { normalizeHeader, remapRow, parseRawRow, dedupeCode } from './inventory-import'
 
 describe('normalizeHeader', () => {
   it('lowercases and strips spaces/underscores/dots/dashes', () => {
@@ -53,6 +53,30 @@ describe('remapRow', () => {
   })
 })
 
+describe('dedupeCode', () => {
+  it('returns the base code unchanged when it is free', () => {
+    expect(dedupeCode('TST-1', () => false)).toBe('TST-1')
+  })
+
+  // Regression: a real donated-supply sheet had two distinct batches of
+  // "Water for injections" both labeled with the same code - dropping the
+  // second one as a "duplicate code" error lost real inventory data.
+  it('appends a letter suffix when the base code is taken', () => {
+    const taken = new Set(['tst-1'])
+    expect(dedupeCode('TST-1', c => taken.has(c.toLowerCase()))).toBe('TST-1A')
+  })
+
+  it('tries the next letter when the first suffix is also taken', () => {
+    const taken = new Set(['tst-1', 'tst-1a'])
+    expect(dedupeCode('TST-1', c => taken.has(c.toLowerCase()))).toBe('TST-1B')
+  })
+
+  it('falls back to a numeric suffix once all 26 letters are taken', () => {
+    const taken = new Set(['tst-1', ...Array.from({ length: 26 }, (_, i) => `tst-1${String.fromCharCode(97 + i)}`)])
+    expect(dedupeCode('TST-1', c => taken.has(c.toLowerCase()))).toBe('TST-1-2')
+  })
+})
+
 describe('parseRawRow', () => {
   it('parses a fully-populated row', () => {
     const result = parseRawRow({
@@ -88,24 +112,37 @@ describe('parseRawRow', () => {
     expect(parseRawRow({ code: 'TST-1', quantity: 5 })).toEqual({ error: 'Missing name' })
   })
 
-  it('rejects a row with no code', () => {
-    expect(parseRawRow({ name: 'Bandage', quantity: 5 })).toEqual({ error: 'Missing code' })
+  // Regression: a blank code used to reject the whole row - now it's left
+  // blank here too, and importActions.ts's parseInventoryExcelAction fills
+  // in a generated placeholder (see its own tests/comments) rather than
+  // losing the row over one empty cell.
+  it('leaves a missing code blank instead of rejecting the row', () => {
+    const result = parseRawRow({ name: 'Bandage', quantity: 5 })
+    expect('row' in result && result.row.code).toBe('')
   })
 
-  it('rejects a zero or negative quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 0 })).toEqual({ error: 'Quantity must be a positive whole number' })
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: -3 })).toEqual({ error: 'Quantity must be a positive whole number' })
+  // Regression: a real donated-supply sheet tracked some items at zero
+  // current stock - zero is a legitimate quantity (see
+  // confirm_inventory_import's own check), not an error.
+  it('accepts a zero quantity', () => {
+    const result = parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 0 })
+    expect('row' in result && result.row.quantity).toBe(0)
+  })
+
+  it('rejects a negative quantity', () => {
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: -3 })).toEqual({ error: 'Quantity must be a whole number, zero or greater' })
   })
 
   it('rejects a non-numeric quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 'lots' })).toEqual({ error: 'Quantity must be a positive whole number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 'lots' })).toEqual({ error: 'Quantity must be a whole number, zero or greater' })
   })
 
   // Regression: every quantity column in this app is an integer - a
-  // fractional value used to sail past this check (finite and positive)
-  // and only fail later as a raw, untranslated Postgres type-cast error.
+  // fractional value used to sail past this check (finite and
+  // non-negative) and only fail later as a raw, untranslated Postgres
+  // type-cast error.
   it('rejects a fractional quantity', () => {
-    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 1.5 })).toEqual({ error: 'Quantity must be a positive whole number' })
+    expect(parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 1.5 })).toEqual({ error: 'Quantity must be a whole number, zero or greater' })
   })
 
   it('rejects a negative minimum stock', () => {

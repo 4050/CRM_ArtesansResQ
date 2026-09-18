@@ -17,6 +17,29 @@ export interface ParsedRow {
 
 export type ParseRowResult = { row: ParsedRow } | { error: string }
 
+// A code already claimed by another row (a duplicate within the same
+// import batch, or a generated placeholder that happens to collide with
+// something) gets a letter suffix instead of the row being dropped - a
+// real donated-supply sheet had two distinct batches of the same item
+// sharing one code ("Water for injections" both labeled 17.2.4). Losing
+// one of them silently was worse than importing both under distinct
+// codes an admin can rename later. `isTaken` is the caller's own check
+// (importActions.ts's parseInventoryExcelAction checks both the
+// already-imported-this-batch set and the org's existing codes), kept
+// out of this pure function so it stays unit-testable without a DB.
+export function dedupeCode(base: string, isTaken: (candidate: string) => boolean): string {
+  if (!isTaken(base)) return base
+  for (let i = 0; i < 26; i++) {
+    const candidate = `${base}${String.fromCharCode(65 + i)}`
+    if (!isTaken(candidate)) return candidate
+  }
+  // Fall back to a counter suffix in the astronomically unlikely case all
+  // 26 letters are also taken.
+  let n = 2
+  while (isTaken(`${base}-${n}`)) n++
+  return `${base}-${n}`
+}
+
 // Column headers are matched loosely (case/spacing-insensitive) against
 // these aliases rather than requiring an exact template, since real-world
 // spreadsheets rarely use one canonical header set. 'openingstock' and the
@@ -111,19 +134,25 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
   const name = typeof mapped.name === 'string' ? mapped.name.trim() : ''
   if (!name) return { error: 'Missing name' }
 
+  // A blank code no longer rejects the row - importActions.ts's
+  // parseInventoryExcelAction fills in a generated placeholder (and
+  // dedupes it against everything else in the batch) the admin can
+  // rename in the editable preview, rather than losing the row entirely
+  // over one empty cell.
   const codeRaw = mapped.code
   const code = typeof codeRaw === 'string' && codeRaw.trim()
     ? codeRaw.trim()
     : (typeof codeRaw === 'number' ? String(codeRaw) : '')
-  if (!code) return { error: 'Missing code' }
 
-  // Every quantity column in this app is an integer (see lib/utils.ts's
-  // clampQuantityInput) - a fractional value like "1.5" is finite and
-  // positive, so it would otherwise sail past this check and only fail
-  // later as a raw, untranslated Postgres type-cast error.
+  // Every quantity column in this app is an integer (see lib/input-utils.ts's
+  // clampNonNegativeInt) - a fractional value like "1.5" is finite and
+  // non-negative, so it would otherwise sail past this check and only fail
+  // later as a raw, untranslated Postgres type-cast error. Zero itself is
+  // valid (see confirm_inventory_import) - a real donated-supply sheet had
+  // items tracked at zero current stock.
   const quantity = Number(mapped.quantity)
-  if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity <= 0) {
-    return { error: 'Quantity must be a positive whole number' }
+  if (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity < 0) {
+    return { error: 'Quantity must be a whole number, zero or greater' }
   }
 
   const qtyMinRaw = mapped.qty_minimum

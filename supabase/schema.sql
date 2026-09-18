@@ -648,8 +648,8 @@ begin
     if item.name is null or trim(item.name) = '' then
       raise exception 'Missing name';
     end if;
-    if item.quantity is null or item.quantity <= 0 then
-      raise exception 'Quantity must be a positive number';
+    if item.quantity is null or item.quantity < 0 then
+      raise exception 'Quantity must be zero or a positive number';
     end if;
     if item.qty_minimum is null or item.qty_minimum < 0 then
       raise exception 'Minimum stock must be zero or a positive number';

@@ -79,18 +79,19 @@ export function remapRow(raw: Record<string, unknown>): Record<string, unknown> 
   return out
 }
 
-// Real donated-supply sheets from Ukrainian-speaking teams label the unit
-// column in Ukrainian, not this app's canonical CONSUMABLE_UNITS codes
-// (lib/consumable-labels.ts) - map the abbreviations one such sheet
-// actually used to their canonical code. Both the bare and dot-suffixed
-// spelling of each are listed since real sheets use either inconsistently
-// (compare "амп" in one row of the sheet this was found from against
-// "амп." in the next). Anything not listed here is left as-is
-// (lowercased) rather than guessed at - same as category's free-text
-// fallback - so it still fails the "unknown unit" check for a genuinely
-// new item later instead of being silently misfiled as something it
-// isn't.
-const UA_UNIT_ALIASES: Record<string, string> = {
+// Real donated-supply sheets label the unit column with abbreviations -
+// often Ukrainian, sometimes just an English one with a trailing dot this
+// app's own codes don't have - rather than this app's canonical
+// CONSUMABLE_UNITS codes (lib/consumable-labels.ts). Map the spelling
+// variants sheets actually used to their canonical code. Both the bare
+// and dot-suffixed spelling of each are listed since real sheets use
+// either inconsistently (compare "амп" in one row of the sheet this was
+// found from against "амп." in the next). Anything not listed here is
+// left as-is (lowercased) rather than guessed at - same as category's
+// free-text fallback - so it still fails the "unknown unit" check for a
+// genuinely new item later instead of being silently misfiled as
+// something it isn't.
+const UNIT_SPELLING_ALIASES: Record<string, string> = {
   'шт': 'pcs', 'шт.': 'pcs',
   'пар': 'pair', 'пар.': 'pair', 'пара': 'pair',
   'мл': 'ml', 'мл.': 'ml',
@@ -100,6 +101,8 @@ const UA_UNIT_ALIASES: Record<string, string> = {
   'уп': 'pack', 'уп.': 'pack', 'упак': 'pack', 'упак.': 'pack',
   'фл': 'vial', 'фл.': 'vial', 'флак': 'vial', 'флак.': 'vial',
   'амп': 'amp', 'амп.': 'amp',
+  'таб': 'tab', 'таб.': 'tab', 'tab.': 'tab',
+  'блістер': 'blister', 'блiстер': 'blister',
 }
 
 export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
@@ -134,7 +137,7 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
     : 'other'
 
   const unitRaw = typeof mapped.unit === 'string' ? mapped.unit.trim().toLowerCase() : ''
-  const unit = UA_UNIT_ALIASES[unitRaw] ?? unitRaw
+  const unit = UNIT_SPELLING_ALIASES[unitRaw] ?? unitRaw
 
   const description = typeof mapped.description === 'string' && mapped.description.trim()
     ? mapped.description.trim()

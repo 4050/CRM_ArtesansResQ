@@ -32,7 +32,7 @@ export interface Bag {
   is_active: boolean
 }
 
-export type ConsumableUnit = 'pcs' | 'pair' | 'ml' | 'l' | 'g' | 'kg' | 'pack' | 'vial' | 'amp'
+export type ConsumableUnit = 'pcs' | 'pair' | 'ml' | 'l' | 'g' | 'kg' | 'pack' | 'vial' | 'amp' | 'tab' | 'blister'
 
 // Known category codes offered by the picker. `category` itself stays a free-text
 // column in the DB, so values outside this set are valid and just aren't translatable.

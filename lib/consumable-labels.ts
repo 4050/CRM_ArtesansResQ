@@ -3,7 +3,7 @@ import type { ConsumableUnit, ConsumableCategory, ConsumableSource } from '@/typ
 
 // Single source of truth for the picker lists — used by both InventoryClient
 // (main warehouse) and TeamStockClient (team stock).
-export const CONSUMABLE_UNITS: ConsumableUnit[] = ['pcs', 'pair', 'ml', 'l', 'g', 'kg', 'pack', 'vial', 'amp']
+export const CONSUMABLE_UNITS: ConsumableUnit[] = ['pcs', 'pair', 'ml', 'l', 'g', 'kg', 'pack', 'vial', 'amp', 'tab', 'blister']
 export const CONSUMABLE_CATEGORIES: ConsumableCategory[] = ['ppe', 'dressings', 'instruments', 'solutions', 'medications', 'other']
 
 // The 3 funding sources the main warehouse screen is split into.

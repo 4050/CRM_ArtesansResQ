@@ -242,6 +242,7 @@
     "importErrors": "Рядки з помилками",
     "importRow": "Рядок",
     "importCurrentQty": "Зараз",
+    "importAddQty": "Додати",
     "importConfirm": "Підтвердити імпорт",
     "importNoValidRows": "У файлі не знайдено жодного коректного рядка",
     "importSummary": "{create} нов. поз., {restock} поз. на поповнення",

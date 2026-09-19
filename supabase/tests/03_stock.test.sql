@@ -160,7 +160,7 @@ select throws_like(
        ),
        '[]'::jsonb
      ) $$,
-  'Quantity must be zero or a positive number',
+  'Quantity must be a whole number, zero or greater',
   'a negative quantity is still rejected, unlike zero'
 );
 

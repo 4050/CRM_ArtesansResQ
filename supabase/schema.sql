@@ -649,10 +649,10 @@ begin
       raise exception 'Missing name';
     end if;
     if item.quantity is null or item.quantity < 0 then
-      raise exception 'Quantity must be zero or a positive number';
+      raise exception 'Quantity must be a whole number, zero or greater';
     end if;
     if item.qty_minimum is null or item.qty_minimum < 0 then
-      raise exception 'Minimum stock must be zero or a positive number';
+      raise exception 'Minimum stock must be a whole number, zero or greater';
     end if;
 
     insert into public.consumables (code, name, category, unit, qty_in_stock, qty_minimum, description, organization_id)
@@ -670,7 +670,7 @@ begin
     from jsonb_to_recordset(coalesce(p_to_restock, '[]'::jsonb)) as x(consumable_id uuid, quantity integer)
   loop
     if item.quantity is null or item.quantity <= 0 then
-      raise exception 'Restock quantity must be a positive number';
+      raise exception 'Restock quantity must be a positive whole number';
     end if;
 
     -- Reuses restock_consumable's own admin/existence checks and its call

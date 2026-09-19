@@ -4,7 +4,7 @@
 --   medic_a        = bbbbbbbb-...-0003 (org A)
 --   admin_b        = bbbbbbbb-...-0004 (org B)
 begin;
-select plan(14);
+select plan(15);
 
 select tests.authenticate_as('bbbbbbbb-0000-0000-0000-000000000001');
 select ok(public.is_admin(), 'master_admin counts as admin');
@@ -60,6 +60,12 @@ select is(
 
 -- touch_last_seen (202609150002): the heartbeat RPC behind the "who's
 -- online" indicator on /{lang}/users.
+select tests.clear_auth();
+select throws_like(
+  $$ select public.touch_last_seen() $$,
+  'Authentication required',
+  'touch_last_seen rejects a call with no authenticated session'
+);
 select is(
   (select last_seen_at from public.users where id = 'bbbbbbbb-0000-0000-0000-000000000002'::uuid),
   null,

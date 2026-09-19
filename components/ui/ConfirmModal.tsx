@@ -6,7 +6,9 @@ import Modal from './Modal'
 
 interface Props {
   title: string
-  itemLabel: string
+  // Omit for a confirmation with nothing more specific to summarize than
+  // the warning text itself - see UsersClient.tsx's delete dialog.
+  itemLabel?: string
   warning: string
   tone: 'amber' | 'red'
   icon: LucideIcon
@@ -76,9 +78,11 @@ export default function ConfirmModal({
         </button>
       </>}
     >
-      <div className="bg-slate-50 rounded-lg px-4 py-3">
-        <div className="text-sm font-medium text-slate-900">{itemLabel}</div>
-      </div>
+      {itemLabel && (
+        <div className="bg-slate-50 rounded-lg px-4 py-3">
+          <div className="text-sm font-medium text-slate-900">{itemLabel}</div>
+        </div>
+      )}
       <div className={cn('flex items-start gap-2 text-sm border rounded-lg px-4 py-3', toneClasses.warning)}>
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <span>{warning}</span>

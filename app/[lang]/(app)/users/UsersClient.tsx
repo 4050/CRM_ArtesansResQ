@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, ShieldOff, ShieldCheck, Trash2, AlertTriangle } from 'lucide-react'
+import { Loader2, ShieldOff, ShieldCheck, Trash2 } from 'lucide-react'
 import { setUserRoleAction, setUserActiveAction, deleteUserAction } from './actions'
 import type { OrgMember } from '@/lib/data/users'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import { cn, isOnline, ONLINE_THRESHOLD_MS } from '@/lib/utils'
 import { formatDateTime } from '@/lib/date-utils'
-import Modal from '@/components/ui/Modal'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 
 function OnlineStatus({ member, lang, dict }: { member: OrgMember; lang: Locale; dict: Dictionary }) {
   // Re-checked periodically (rather than only at page load) so a member
@@ -309,38 +309,19 @@ export default function UsersClient({ lang, dict, members: initial, currentUserI
       </div>
 
       {deleteTarget && (
-        <Modal
+        <ConfirmModal
           title={dict.users.deleteTitle}
+          warning={dict.users.deleteWarning}
+          tone="red"
+          icon={Trash2}
+          confirmLabel={dict.users.deleteUser}
+          cancelLabel={dict.users.cancel}
+          saving={savingId === deleteTarget.id}
+          error={error}
+          errorLabel={dict.users.error}
           onClose={() => setDeleteTarget(null)}
-          closeDisabled={savingId === deleteTarget.id}
-          footer={<>
-            <button
-              onClick={() => setDeleteTarget(null)}
-              disabled={savingId === deleteTarget.id}
-              className="flex-1 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {dict.users.cancel}
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={savingId === deleteTarget.id}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-            >
-              {savingId === deleteTarget.id && <Loader2 className="w-4 h-4 animate-spin" />}
-              {dict.users.deleteUser}
-            </button>
-          </>}
-        >
-          <p className="text-sm text-slate-600">
-            {dict.users.deleteWarning}
-          </p>
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-        </Modal>
+          onConfirm={handleDelete}
+        />
       )}
     </div>
   )

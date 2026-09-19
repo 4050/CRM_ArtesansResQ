@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { AlertTriangle, Phone, Package, Plus } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import { isLowStock } from '@/lib/utils'
 import { formatDateTime, startOfDayIso, ORG_TIMEZONE } from '@/lib/date-utils'
 import { unitLabel } from '@/lib/consumable-labels'
@@ -8,7 +7,7 @@ import { getCallsCountSince, getRecentCalls } from '@/lib/data/calls'
 import { getStockLevels } from '@/lib/data/consumables'
 import { getTeamStock } from '@/lib/data/team-stock'
 import { getWriteoffsTotalSince } from '@/lib/data/writeoffs'
-import { getProfile } from '@/lib/data/users'
+import { getCallerProfile } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
@@ -18,14 +17,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
 
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-
-  // See lib/timezone.ts - the "today" boundary for the stat cards below is
-  // computed in the org's zone rather than the server's (which defaults to
-  // UTC on most hosts, putting midnight hours off from where the team
-  // actually is).
+  // See lib/date-utils.ts's ORG_TIMEZONE - the "today" boundary for the
+  // stat cards below is computed in the org's zone rather than the
+  // server's (which defaults to UTC on most hosts, putting midnight hours
+  // off from where the team actually is).
   const todayIso = startOfDayIso(ORG_TIMEZONE)
 
   const [callsToday, recentCalls, teamStock, totalWrittenOff, profile] = await Promise.all([
@@ -33,7 +28,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
     getRecentCalls(5),
     getTeamStock(),
     getWriteoffsTotalSince(todayIso),
-    getProfile(userId!),
+    getCallerProfile(),
   ])
 
   const isAdmin = isAdminRole(profile?.role)

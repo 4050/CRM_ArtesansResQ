@@ -1,11 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Truck, ShoppingBag, User, FileText, Package, Pencil } from 'lucide-react'
 import { formatDateTime, toBCP47, ORG_TIMEZONE } from '@/lib/date-utils'
 import { unitLabel, categoryLabel } from '@/lib/consumable-labels'
 import { getCallDetail } from '@/lib/data/calls'
-import { getProfile } from '@/lib/data/users'
+import { getCallerProfile } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../../dictionaries'
 import DeleteCallButton from './DeleteCallButton'
@@ -16,13 +15,9 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
   const dict = await getDictionary(lang)
   const dateLocale = toBCP47(lang)
 
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const authUserId = claimsData?.claims.sub
-
   const [call, profile] = await Promise.all([
     getCallDetail(id),
-    getProfile(authUserId!),
+    getCallerProfile(),
   ])
 
   if (!call) notFound()
@@ -31,7 +26,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ lan
   const vehicle = call.vehicle as { number: string; name: string | null } | null
   const bag = call.bag as { number: string; description: string | null } | null
   const callUser = call.user as { name: string } | null
-  const canManage = call.user_id === authUserId || isAdminRole(profile?.role)
+  const canManage = call.user_id === profile?.id || isAdminRole(profile?.role)
   const writeoffs = (call.writeoffs ?? []) as {
     id: string
     quantity: number

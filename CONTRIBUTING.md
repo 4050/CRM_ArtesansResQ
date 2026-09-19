@@ -53,6 +53,18 @@ and Chris Beams' [seven rules](https://cbea.ms/git-commit/) without the
 - Never commit secrets (`.env.local` is gitignored — keep it that way) or
   generated output (`.next/`, `node_modules/`, `coverage/`).
 
+## Code comments
+
+Write new comments in **English**, including in SQL (`supabase/schema.sql`,
+migrations) and pgTAP tests — the older parts of the schema still carry
+comments in Russian from the project's early history, and that split has
+kept drifting rather than resolving on its own as new migrations landed in
+either language depending on who wrote them. Don't go translate existing
+Russian comments as a drive-by change (it adds diff noise to unrelated
+PRs and risks losing nuance in the translation); just write anything you
+add or touch going forward in English, so the split shrinks over time
+instead of growing.
+
 ## Pull requests
 
 - Every change lands via PR — no direct pushes to `main` or the integration

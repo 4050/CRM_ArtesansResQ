@@ -1,7 +1,7 @@
 # Contributing / Git workflow
 
-This project uses **trunk-based development with a staging integration
-branch**, borrowing from [GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow),
+This project uses **trunk-based development**, borrowing from
+[GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow),
 [Conventional Commits](https://www.conventionalcommits.org/) discipline (without
 the mandatory `type:` prefix — see below), and the standard PR-review model
 used by most open-source and corporate teams. It's written down here so the
@@ -9,14 +9,19 @@ convention survives beyond any one contributor's memory.
 
 ## Branches
 
-- **`main`** — the rollback-safe baseline. Only ever updated via a reviewed
-  PR from the current integration branch. Never commit to it directly.
-- **Integration branch** (currently `team-stock-warehouse`) — the active
-  branch with its own PR open into `main`. Short-lived feature branches
-  target this branch, not `main`, while it's active.
+- **`main`** — the rollback-safe baseline and the only integration point.
+  Only ever updated via a reviewed PR. Never commit to it directly.
 - **Feature/fix branches** — one branch per discrete, independently
-  reviewable change. Branch off the *current tip* of the integration branch,
-  do the work, open a PR back into it, then delete the branch once merged.
+  reviewable change. Branch off the *current tip* of `main`, do the work,
+  open a PR back into `main`, then delete the branch once merged.
+
+This project briefly used a staging integration branch (`team-stock-warehouse`)
+to batch several related feature branches before merging them into `main`
+together. That branch was merged and retired; every branch since has targeted
+`main` directly, and there's no active integration branch today. If a future
+piece of work is genuinely large enough to warrant staging again, introduce
+a new integration branch deliberately and update this doc to name it - don't
+assume one exists.
 
 ### Why one branch per change
 
@@ -24,13 +29,13 @@ A branch that mixes two unrelated changes (e.g. a UI fix and a new feature)
 is harder to review, harder to revert in isolation, and harder to bisect
 later. Keep each branch scoped to a single concern:
 
-- Starting genuinely new work → branch from the integration branch's tip.
+- Starting genuinely new work → branch from `main`'s tip.
 - A small follow-up to a change still under review → keep committing to that
   same branch/PR rather than spawning a new one.
 - Need code that only exists on another unmerged branch (e.g. fixing a bug
   introduced by a feature that hasn't landed yet) → branch from *that*
-  feature branch instead, and PR into it — not into the integration branch,
-  since the integration branch doesn't have the code yet either.
+  feature branch instead, and PR into it, not into `main` - `main` doesn't
+  have the code yet either.
 
 ### Naming
 
@@ -67,8 +72,7 @@ instead of growing.
 
 ## Pull requests
 
-- Every change lands via PR — no direct pushes to `main` or the integration
-  branch.
+- Every change lands via PR — no direct pushes to `main`.
 - Keep PRs small and single-purpose (a natural consequence of one branch per
   change).
 - PR description covers **Summary** (what/why) and **Test plan** (what was
@@ -95,6 +99,5 @@ npm run check:schema   # after any change under supabase/
 ## Rebasing & force-push
 
 Avoid rewriting history on branches others may have pulled, and never
-force-push to `main` or the integration branch. Rebasing your own
-not-yet-reviewed feature branch on top of the integration branch to pick up
-recent changes is fine.
+force-push to `main`. Rebasing your own not-yet-reviewed feature branch on
+top of `main` to pick up recent changes is fine.

@@ -8,9 +8,123 @@ import { unitLabel, categoryLabel, CONSUMABLE_UNITS, CONSUMABLE_CATEGORIES } fro
 import { clampQuantityInput, clampNonNegativeInt } from '@/lib/input-utils'
 import type { Dictionary, Locale } from '@/app/[lang]/dictionaries'
 import type { Consumable } from '@/types'
-import { parseInventoryExcelAction, confirmInventoryImportAction, type ImportPreview, type ImportRow } from './importActions'
+import {
+  parseInventoryExcelAction,
+  confirmInventoryImportAction,
+  type ImportPreview,
+  type ImportRow,
+  type RestockPreviewRow,
+} from './importActions'
 
 const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024 // 10MB - see next.config.ts's serverActions.bodySizeLimit
+
+// One row of the "new items" table - code/name/category/unit/quantity are
+// all editable, since confirmInventoryImportAction re-validates everything
+// server-side regardless (see confirm_inventory_import) - this just lets
+// an admin fix an obvious parse mistake without re-uploading the file.
+function ImportCreateRow({
+  row,
+  dict,
+  busy,
+  onChange,
+}: {
+  row: ImportRow
+  dict: Dictionary
+  busy: boolean
+  onChange: (patch: Partial<ImportRow>) => void
+}) {
+  return (
+    <tr>
+      <td className="px-1 py-1">
+        <input
+          value={row.code}
+          onChange={e => onChange({ code: e.target.value })}
+          disabled={busy}
+          className="w-24 px-2 py-1 font-mono text-xs text-slate-700 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
+        />
+      </td>
+      <td className="px-1 py-1">
+        <input
+          value={row.name}
+          onChange={e => onChange({ name: e.target.value })}
+          disabled={busy}
+          className="w-full min-w-[120px] px-2 py-1 text-sm text-slate-900 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
+        />
+      </td>
+      <td className="px-1 py-1">
+        <select
+          value={row.category}
+          onChange={e => onChange({ category: e.target.value })}
+          disabled={busy}
+          className="px-2 py-1 text-sm text-slate-500 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
+        >
+          {!CONSUMABLE_CATEGORIES.some(c => c === row.category) && (
+            <option value={row.category}>{categoryLabel(dict, row.category)}</option>
+          )}
+          {CONSUMABLE_CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
+        </select>
+      </td>
+      <td className="px-1 py-1">
+        <select
+          value={row.unit}
+          onChange={e => onChange({ unit: e.target.value as ImportRow['unit'] })}
+          disabled={busy}
+          className={cn(
+            'px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent',
+            row.unit ? 'text-slate-500 border-transparent hover:border-slate-200 focus:border-red-400' : 'text-amber-700 border-amber-300',
+          )}
+        >
+          <option value="">{dict.inventory.importSelectUnit}</option>
+          {CONSUMABLE_UNITS.map(u => <option key={u} value={u}>{unitLabel(dict, u)}</option>)}
+        </select>
+      </td>
+      <td className="px-1 py-1 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <span className="text-green-600 font-semibold">+</span>
+          <input
+            type="number"
+            min="0"
+            value={row.quantity}
+            onChange={e => onChange({ quantity: clampNonNegativeInt(e.target.value) })}
+            disabled={busy}
+            className="w-16 px-2 py-1 text-sm text-right font-semibold text-green-600 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
+          />
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// One row of the "restock existing items" table - only the amount to add
+// is editable (code/category/unit come from the already-existing item and
+// aren't part of this operation).
+function ImportRestockRow({
+  r,
+  busy,
+  onQuantityChange,
+}: {
+  r: RestockPreviewRow
+  busy: boolean
+  onQuantityChange: (quantity: number) => void
+}) {
+  return (
+    <tr>
+      <td className="px-3 py-1.5 text-slate-900">{r.existingName}</td>
+      <td className="px-3 py-1.5 text-right text-slate-500">{r.currentQty}</td>
+      <td className="px-1 py-1 text-right">
+        <input
+          type="number"
+          min="1"
+          value={r.row.quantity}
+          onChange={e => onQuantityChange(clampQuantityInput(e.target.value))}
+          disabled={busy}
+          className="w-16 px-2 py-1 text-sm text-right font-semibold text-slate-700 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
+        />
+      </td>
+      <td className="px-3 py-1.5 text-right font-semibold text-blue-600">{r.currentQty + r.row.quantity}</td>
+    </tr>
+  )
+}
 
 interface Props {
   lang: Locale
@@ -95,10 +209,6 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
   const busy = parsing || confirming
   const hasActionableRows = !!preview && (preview.toCreate.length > 0 || preview.toRestock.length > 0)
 
-  // Confirming re-validates every field server-side regardless (see
-  // confirm_inventory_import) - editing here just lets an admin fix an
-  // obvious parse mistake (a typo'd code, a category the sheet didn't
-  // set) without having to fix the spreadsheet and re-upload.
   function updateCreateRow(rowNumber: number, patch: Partial<ImportRow>) {
     setPreview(prev => prev && { ...prev, toCreate: prev.toCreate.map(r => r.rowNumber === rowNumber ? { ...r, ...patch } : r) })
   }
@@ -172,64 +282,13 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {preview.toCreate.map(row => (
-                      <tr key={row.rowNumber}>
-                        <td className="px-1 py-1">
-                          <input
-                            value={row.code}
-                            onChange={e => updateCreateRow(row.rowNumber, { code: e.target.value })}
-                            disabled={busy}
-                            className="w-24 px-2 py-1 font-mono text-xs text-slate-700 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <input
-                            value={row.name}
-                            onChange={e => updateCreateRow(row.rowNumber, { name: e.target.value })}
-                            disabled={busy}
-                            className="w-full min-w-[120px] px-2 py-1 text-sm text-slate-900 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <select
-                            value={row.category}
-                            onChange={e => updateCreateRow(row.rowNumber, { category: e.target.value })}
-                            disabled={busy}
-                            className="px-2 py-1 text-sm text-slate-500 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
-                          >
-                            {!CONSUMABLE_CATEGORIES.some(c => c === row.category) && (
-                              <option value={row.category}>{categoryLabel(dict, row.category)}</option>
-                            )}
-                            {CONSUMABLE_CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(dict, c)}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-1 py-1">
-                          <select
-                            value={row.unit}
-                            onChange={e => updateCreateRow(row.rowNumber, { unit: e.target.value as ImportRow['unit'] })}
-                            disabled={busy}
-                            className={cn(
-                              'px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent',
-                              row.unit ? 'text-slate-500 border-transparent hover:border-slate-200 focus:border-red-400' : 'text-amber-700 border-amber-300',
-                            )}
-                          >
-                            <option value="">{dict.inventory.importSelectUnit}</option>
-                            {CONSUMABLE_UNITS.map(u => <option key={u} value={u}>{unitLabel(dict, u)}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-1 py-1 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <span className="text-green-600 font-semibold">+</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={row.quantity}
-                              onChange={e => updateCreateRow(row.rowNumber, { quantity: clampNonNegativeInt(e.target.value) })}
-                              disabled={busy}
-                              className="w-16 px-2 py-1 text-sm text-right font-semibold text-green-600 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
-                            />
-                          </div>
-                        </td>
-                      </tr>
+                      <ImportCreateRow
+                        key={row.rowNumber}
+                        row={row}
+                        dict={dict}
+                        busy={busy}
+                        onChange={patch => updateCreateRow(row.rowNumber, patch)}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -254,21 +313,12 @@ export default function ImportExcelModal({ lang, dict, onClose, onImported }: Pr
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {preview.toRestock.map(r => (
-                      <tr key={r.row.rowNumber}>
-                        <td className="px-3 py-1.5 text-slate-900">{r.existingName}</td>
-                        <td className="px-3 py-1.5 text-right text-slate-500">{r.currentQty}</td>
-                        <td className="px-1 py-1 text-right">
-                          <input
-                            type="number"
-                            min="1"
-                            value={r.row.quantity}
-                            onChange={e => updateRestockQuantity(r.row.rowNumber, clampQuantityInput(e.target.value))}
-                            disabled={busy}
-                            className="w-16 px-2 py-1 text-sm text-right font-semibold text-slate-700 border border-transparent rounded hover:border-slate-200 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400 disabled:opacity-50 bg-transparent"
-                          />
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-semibold text-blue-600">{r.currentQty + r.row.quantity}</td>
-                      </tr>
+                      <ImportRestockRow
+                        key={r.row.rowNumber}
+                        r={r}
+                        busy={busy}
+                        onQuantityChange={quantity => updateRestockQuantity(r.row.rowNumber, quantity)}
+                      />
                     ))}
                   </tbody>
                 </table>

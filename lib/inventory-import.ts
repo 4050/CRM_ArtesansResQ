@@ -2,6 +2,8 @@
 // of app/[lang]/(app)/(admin)/inventory/importActions.ts (a 'use server'
 // file, which can only export async actions) so it's directly unit-testable.
 
+import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
+
 export interface ParsedRow {
   code: string
   name: string
@@ -173,4 +175,34 @@ export function parseRawRow(raw: Record<string, unknown>): ParseRowResult {
     : null
 
   return { row: { code, name, category, unit, quantity, qty_minimum, description } }
+}
+
+export interface CreateRowInput {
+  code: string
+  name: string
+  unit: string
+  quantity: number
+  qty_minimum: number
+}
+
+// confirmInventoryImportAction (importActions.ts) re-validates every row
+// parseInventoryExcelAction already put in the preview, since it's a
+// separately-invocable server action that takes the preview back as plain
+// client input - the admin's own edits in ImportExcelModal.tsx (or a
+// crafted request) could have made it invalid again. Same wording as
+// parseRawRow's own quantity/qty_minimum messages above; kept in sync by
+// hand with confirm_inventory_import's own checks (supabase/schema.sql) -
+// that RPC is the actual enforcement point and can't literally import
+// this string.
+export function validateCreateRow(row: CreateRowInput): string | null {
+  if (!row.code.trim()) return 'Missing code'
+  if (!row.name.trim()) return 'Missing name'
+  if (!CONSUMABLE_UNITS.some(u => u === row.unit)) return `Invalid unit "${row.unit}"`
+  if (!Number.isFinite(row.quantity) || !Number.isInteger(row.quantity) || row.quantity < 0) {
+    return 'Quantity must be a whole number, zero or greater'
+  }
+  if (!Number.isFinite(row.qty_minimum) || !Number.isInteger(row.qty_minimum) || row.qty_minimum < 0) {
+    return 'Minimum stock must be a whole number, zero or greater'
+  }
+  return null
 }

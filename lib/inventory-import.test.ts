@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeHeader, remapRow, parseRawRow, dedupeCode } from './inventory-import'
+import { normalizeHeader, remapRow, parseRawRow, dedupeCode, validateCreateRow } from './inventory-import'
 
 describe('normalizeHeader', () => {
   it('lowercases and strips spaces/underscores/dots/dashes', () => {
@@ -173,5 +173,44 @@ describe('parseRawRow', () => {
   it('leaves an unrecognized unit as lowercased free text, same as category', () => {
     const result = parseRawRow({ name: 'Bandage', code: 'TST-1', quantity: 5, unit: 'Boxful' })
     expect('row' in result && result.row.unit).toBe('boxful')
+  })
+})
+
+describe('validateCreateRow', () => {
+  // confirmInventoryImportAction (importActions.ts) re-validates every row
+  // parseInventoryExcelAction already put in the preview, since the
+  // admin's own edits in the editable preview (or a crafted request)
+  // could have made it invalid again.
+  const validRow = { code: 'TST-1', name: 'Bandage', unit: 'pcs', quantity: 5, qty_minimum: 0 }
+
+  it('accepts a fully valid row', () => {
+    expect(validateCreateRow(validRow)).toBeNull()
+  })
+
+  it('rejects a blank code', () => {
+    expect(validateCreateRow({ ...validRow, code: '  ' })).toBe('Missing code')
+  })
+
+  it('rejects a blank name', () => {
+    expect(validateCreateRow({ ...validRow, name: '  ' })).toBe('Missing name')
+  })
+
+  it('rejects a unit outside the canonical CONSUMABLE_UNITS list', () => {
+    expect(validateCreateRow({ ...validRow, unit: '' })).toBe('Invalid unit ""')
+    expect(validateCreateRow({ ...validRow, unit: 'boxes' })).toBe('Invalid unit "boxes"')
+  })
+
+  // Regression: a real donated-supply sheet tracked some items at zero
+  // current stock - zero is a legitimate quantity, not an error.
+  it('accepts a zero quantity', () => {
+    expect(validateCreateRow({ ...validRow, quantity: 0 })).toBeNull()
+  })
+
+  it('rejects a negative quantity', () => {
+    expect(validateCreateRow({ ...validRow, quantity: -1 })).toBe('Quantity must be a whole number, zero or greater')
+  })
+
+  it('rejects a negative minimum stock', () => {
+    expect(validateCreateRow({ ...validRow, qty_minimum: -1 })).toBe('Minimum stock must be a whole number, zero or greater')
   })
 })

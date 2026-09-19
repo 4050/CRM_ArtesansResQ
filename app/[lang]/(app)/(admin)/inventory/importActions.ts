@@ -9,7 +9,7 @@ import { requireRole } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import type { Consumable, ConsumableUnit } from '@/types'
 import { CONSUMABLE_UNITS } from '@/lib/consumable-labels'
-import { parseRawRow, dedupeCode } from '@/lib/inventory-import'
+import { parseRawRow, dedupeCode, validateCreateRow } from '@/lib/inventory-import'
 
 export interface ImportRow {
   rowNumber: number
@@ -159,23 +159,6 @@ export interface ImportConfirmResult {
   error?: string
   created: Consumable[]
   restocked: Consumable[]
-}
-
-// parseInventoryExcelAction already validates every row it puts into the
-// preview, but confirmInventoryImportAction is a separately-invocable server
-// action that takes that preview back as plain client input — re-check it
-// here rather than trusting whatever payload happens to arrive.
-function validateCreateRow(row: ImportRow): string | null {
-  if (!row.code.trim()) return 'Missing code'
-  if (!row.name.trim()) return 'Missing name'
-  if (!CONSUMABLE_UNITS.some(u => u === row.unit)) return `Invalid unit "${row.unit}"`
-  if (!Number.isFinite(row.quantity) || !Number.isInteger(row.quantity) || row.quantity < 0) {
-    return 'Quantity must be a whole number, zero or greater'
-  }
-  if (!Number.isFinite(row.qty_minimum) || !Number.isInteger(row.qty_minimum) || row.qty_minimum < 0) {
-    return 'Minimum stock must be a whole number, zero or greater'
-  }
-  return null
 }
 
 // Applies the whole preview (new items + restocks) as a single transaction

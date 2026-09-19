@@ -1,6 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
 import { getTeamStock } from '@/lib/data/team-stock'
-import { getProfile } from '@/lib/data/users'
+import { getCallerProfile } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import { getDictionary, hasLocale } from '../../dictionaries'
 import { notFound } from 'next/navigation'
@@ -11,11 +10,7 @@ export default async function TeamStockPage({ params }: { params: Promise<{ lang
   if (!hasLocale(lang)) notFound()
   const dict = await getDictionary(lang)
 
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-
-  const profile = await getProfile(userId!)
+  const profile = await getCallerProfile()
   const isAdmin = isAdminRole(profile?.role)
   const items = await getTeamStock({ includeInactive: isAdmin })
 

@@ -1,6 +1,5 @@
-import { redirect, notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { getProfile } from '@/lib/data/users'
+import { notFound } from 'next/navigation'
+import { requireCallerRole } from '@/lib/auth-guards'
 import { isAdminRole } from '@/lib/roles'
 import { hasLocale } from '../../dictionaries'
 
@@ -20,12 +19,7 @@ export default async function AdminLayout({
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
 
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims.sub
-
-  const profile = await getProfile(userId!)
-  if (!isAdminRole(profile?.role)) redirect(`/${lang}/dashboard`)
+  await requireCallerRole(isAdminRole, `/${lang}/dashboard`)
 
   return <>{children}</>
 }

@@ -1,5 +1,9 @@
 -- МедСклад: схема базы данных v2.0 (мультитенантная)
 
+-- ======================================================================
+-- Tables
+-- ======================================================================
+
 -- Организации (тенанты). Каждая организация видит только свои данные.
 create table public.organizations (
   id uuid primary key default gen_random_uuid(),
@@ -122,6 +126,10 @@ create table public.team_stock (
   unique (consumable_id)
 );
 
+-- ======================================================================
+-- Indexes
+-- ======================================================================
+
 create index stock_movements_created_at_idx on public.stock_movements(created_at desc);
 create index stock_movements_consumable_id_idx on public.stock_movements(consumable_id, created_at desc);
 create index stock_movements_user_id_idx on public.stock_movements(user_id, created_at desc);
@@ -134,6 +142,10 @@ create index writeoffs_organization_id_created_at_idx on public.writeoffs(organi
 create index stock_movements_organization_id_created_at_idx on public.stock_movements(organization_id, created_at desc);
 create index team_stock_organization_id_idx on public.team_stock(organization_id);
 
+-- ======================================================================
+-- Row Level Security
+-- ======================================================================
+
 -- RLS (Row Level Security) — каждая организация видит только свои данные.
 alter table public.organizations enable row level security;
 alter table public.users enable row level security;
@@ -144,6 +156,10 @@ alter table public.calls enable row level security;
 alter table public.writeoffs enable row level security;
 alter table public.stock_movements enable row level security;
 alter table public.team_stock enable row level security;
+
+-- ======================================================================
+-- Auth & role helper functions
+-- ======================================================================
 
 -- master_admin has every admin capability plus user-role management —
 -- widening this one check makes it flow automatically into every existing
@@ -187,6 +203,10 @@ $$;
 alter table public.consumables alter column organization_id set default public.current_org_id();
 alter table public.vehicles alter column organization_id set default public.current_org_id();
 alter table public.bags alter column organization_id set default public.current_org_id();
+
+-- ======================================================================
+-- RLS policies
+-- ======================================================================
 
 create policy "Users read own organization" on public.organizations
   for select to authenticated using (id = public.current_org_id());
@@ -246,6 +266,10 @@ create policy "Authenticated read stock movements" on public.stock_movements
 create policy "Authenticated read team stock" on public.team_stock
   for select to authenticated using (organization_id = public.current_org_id());
 
+-- ======================================================================
+-- New-user bootstrap
+-- ======================================================================
+
 -- Функция: автоматически создавать профиль при регистрации.
 -- organization_id обязателен в raw_user_meta_data (передаётся при создании
 -- пользователя через Dashboard/Admin API) — без него транзакция откатывается.
@@ -277,6 +301,10 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ======================================================================
+-- Stock movement logging & adjustment
+-- ======================================================================
 
 -- Любое изменение qty_in_stock автоматически попадает в журнал, в том числе
 -- изменения через RPC и прямые административные корректировки.
@@ -610,6 +638,10 @@ $$;
 revoke all on function public.restock_consumable(uuid, integer) from public;
 grant execute on function public.restock_consumable(uuid, integer) to authenticated;
 
+-- ======================================================================
+-- Inventory import & consumable lifecycle
+-- ======================================================================
+
 -- Applies an Excel import's preview (new items + restocks of existing
 -- ones) as a single transaction - previously the app inserted new items in
 -- one request and then looped restock_consumable one row at a time,
@@ -741,6 +773,10 @@ $$;
 revoke all on function public.delete_consumable(uuid) from public;
 grant execute on function public.delete_consumable(uuid) to authenticated;
 
+-- ======================================================================
+-- Vehicles & bags lifecycle
+-- ======================================================================
+
 create or replace function public.archive_vehicle(p_vehicle_id uuid)
 returns void
 language plpgsql
@@ -840,6 +876,10 @@ $$;
 revoke all on function public.delete_bag(uuid) from public;
 grant execute on function public.delete_bag(uuid) to authenticated;
 
+-- ======================================================================
+-- User & role management
+-- ======================================================================
+
 -- Назначение ролей — только master_admin, и только admin/medic в качестве
 -- цели (второй master_admin заводится вручную через SQL Editor, как и
 -- первый — не через этот RPC). Менять собственную роль через этот путь
@@ -896,6 +936,10 @@ $$;
 
 revoke all on function public.touch_last_seen() from public;
 grant execute on function public.touch_last_seen() to authenticated;
+
+-- ======================================================================
+-- Calls & write-offs
+-- ======================================================================
 
 -- Транзакционные операции с вызовами. Один вызов RPC выполняется PostgreSQL
 -- целиком: при любой ошибке вызов, списания и остатки откатываются вместе.
@@ -1143,6 +1187,10 @@ revoke all on function public.delete_call_with_writeoffs(uuid) from public;
 grant execute on function public.create_call_with_writeoffs(timestamptz, text, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.update_call_with_writeoffs(uuid, timestamptz, text, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.delete_call_with_writeoffs(uuid) to authenticated;
+
+-- ======================================================================
+-- Reporting
+-- ======================================================================
 
 -- Aggregates the write-offs report (totals + per-item breakdown) in SQL so
 -- it covers every matching row for the selected range, not just however
